@@ -30,16 +30,17 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Android SDK & NDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android NDK 28.2 & CMake 3.22.1
+      - name: Setup Android SDK, NDK 28.2 & CMake 3.22.1
         shell: bash
         run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMGR="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
           set +o pipefail
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          yes | "$SDKMGR" --sdk_root="$SDK_ROOT" --licenses >/dev/null 2>&1 || true
           set -o pipefail
-          sdkmanager "ndk;28.2.13676358" "cmake;3.22.1" "platforms;android-36" "build-tools;35.0.0"
+          "$SDKMGR" --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-36" "build-tools;35.0.0" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
