@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/quota_progress_card.dart';
+import '../../../core/widgets/update_available_dialog.dart';
 import '../../../core/widgets/usage_breakdown_bar.dart';
 import '../../device_detail/views/device_detail_screen.dart';
 import '../../history/views/connection_history_screen.dart';
@@ -17,13 +18,49 @@ import '../../service_detail/views/service_detail_screen.dart';
 import '../../settings/views/settings_screen.dart';
 import '../view_models/dashboard_view_model.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key, required this.viewModel});
 
   final DashboardViewModel viewModel;
 
   @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  bool _updateDialogShown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.viewModel.addListener(_checkUpdatePopup);
+  }
+
+  @override
+  void dispose() {
+    widget.viewModel.removeListener(_checkUpdatePopup);
+    super.dispose();
+  }
+
+  void _checkUpdatePopup() {
+    final update = widget.viewModel.availableUpdate;
+    if (update != null && update.isNewer && !_updateDialogShown && mounted) {
+      _updateDialogShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        UpdateAvailableDialog.show(
+          context,
+          release: update,
+          onDownload: () => widget.viewModel.openUrl(update.downloadUrl),
+          onDismiss: () => widget.viewModel.dismissUpdate(),
+        );
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final viewModel = widget.viewModel;
     return ListenableBuilder(
       listenable: viewModel,
       builder: (context, _) {
@@ -84,6 +121,30 @@ class DashboardScreen extends StatelessWidget {
                         icon: const Icon(FLucideIcons.circleAlert),
                         title: const Text('Packet Probe Notice'),
                         subtitle: Text(snapshot.probeError!),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (viewModel.availableUpdate != null &&
+                        viewModel.availableUpdate!.isNewer) ...[
+                      FTappable(
+                        onPress: () => UpdateAvailableDialog.show(
+                          context,
+                          release: viewModel.availableUpdate!,
+                          onDownload: () => viewModel.openUrl(
+                            viewModel.availableUpdate!.downloadUrl,
+                          ),
+                          onDismiss: () => viewModel.dismissUpdate(),
+                        ),
+                        child: FAlert(
+                          variant: FAlertVariant.primary,
+                          icon: const Icon(FLucideIcons.sparkles),
+                          title: Text(
+                            'Update ${viewModel.availableUpdate!.tagName} Available',
+                          ),
+                          subtitle: const Text(
+                            'Tap to review the changelog and download the latest update.',
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 12),
                     ],

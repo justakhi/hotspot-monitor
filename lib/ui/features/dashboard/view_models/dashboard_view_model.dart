@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../../data/repositories/hotspot_repository.dart';
+import '../../../../domain/models/app_release_info.dart';
 import '../../../../domain/models/connected_device.dart';
 import '../../../../domain/models/device_quota.dart';
 import '../../../../domain/models/history_report.dart';
@@ -28,12 +29,14 @@ class DashboardViewModel extends ChangeNotifier {
   bool _isInitializing = true;
   bool _isBusy = false;
   String? _errorMessage;
+  AppReleaseInfo? _availableUpdate;
 
   HotspotSnapshot get snapshot => _snapshot;
   List<DeviceHistorySummary> get knownDeviceHistory => _knownDeviceHistory;
   bool get isInitializing => _isInitializing;
   bool get isBusy => _isBusy;
   String? get errorMessage => _errorMessage;
+  AppReleaseInfo? get availableUpdate => _availableUpdate;
 
   QuotaConfig get globalQuota => repository.globalQuota;
   Map<String, DeviceQuota> get deviceQuotas => repository.deviceQuotas;
@@ -82,6 +85,7 @@ class DashboardViewModel extends ChangeNotifier {
       _isInitializing = false;
       notifyListeners();
     }
+    unawaited(checkForUpdate(force: false));
   }
 
   void _maybeRefreshHistory() {
@@ -197,6 +201,24 @@ class DashboardViewModel extends ChangeNotifier {
   Future<void> clearHistory() async {
     await repository.clearHistory();
     _knownDeviceHistory = const [];
+    notifyListeners();
+  }
+
+  Future<AppReleaseInfo?> checkForUpdate({bool force = false}) async {
+    try {
+      final info = await repository.checkForUpdate(force: force);
+      if (info != null && info.isNewer) {
+        _availableUpdate = info;
+        notifyListeners();
+      }
+      return info;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void dismissUpdate() {
+    _availableUpdate = null;
     notifyListeners();
   }
 

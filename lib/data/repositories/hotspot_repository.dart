@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../domain/models/app_release_info.dart';
 import '../../domain/models/capability_state.dart';
 import '../../domain/models/device_quota.dart';
 import '../../domain/models/history_report.dart';
@@ -10,6 +11,7 @@ import '../services/device_alias_service.dart';
 import '../services/history_store.dart';
 import '../services/hotspot_platform_service.dart';
 import '../services/quota_service.dart';
+import '../services/update_checker_service.dart';
 
 /// Single source of truth merging native telemetry, aliases, and SQLite history.
 class HotspotRepository {
@@ -17,13 +19,16 @@ class HotspotRepository {
     required this.platformService,
     required this.aliasService,
     QuotaService? quotaService,
+    UpdateCheckerService? updateService,
     HistoryStore? historyStore,
   })  : quotaService = quotaService ?? QuotaService(),
+        updateService = updateService ?? UpdateCheckerService(),
         historyStore = historyStore ?? SqliteHistoryStore();
 
   final HotspotPlatformService platformService;
   final DeviceAliasService aliasService;
   final QuotaService quotaService;
+  final UpdateCheckerService updateService;
   final HistoryStore historyStore;
 
   Map<String, String> _aliases = const {};
@@ -123,6 +128,10 @@ class HotspotRepository {
     if (!_controller.isClosed) {
       _controller.add(_latest);
     }
+  }
+
+  Future<AppReleaseInfo?> checkForUpdate({bool force = false}) {
+    return updateService.checkForUpdate(force: force);
   }
 
   Future<void> setGlobalQuota(QuotaConfig config) async {

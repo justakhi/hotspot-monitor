@@ -6,6 +6,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/quota_progress_card.dart';
+import '../../../core/widgets/update_available_dialog.dart';
+import '../../../../data/services/update_checker_service.dart';
 import '../../dashboard/view_models/dashboard_view_model.dart';
 import '../../history/views/connection_history_screen.dart';
 import '../../reports/views/reports_screen.dart';
@@ -241,6 +243,41 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: 8),
               FTileGroup(
                 children: [
+                  FTile(
+                    prefix: const Icon(FLucideIcons.sparkles),
+                    title: const Text('Check for Updates'),
+                    subtitle: Text(
+                      'Installed version: v${UpdateCheckerService.currentVersion}',
+                    ),
+                    suffix: const Icon(FLucideIcons.chevronRight),
+                    onPress: () async {
+                      showFToast(
+                        context: context,
+                        icon: const Icon(FLucideIcons.loader),
+                        title: const Text('Checking GitHub Releases...'),
+                      );
+                      final update = await viewModel.checkForUpdate(force: true);
+                      if (!context.mounted) return;
+                      if (update != null && update.isNewer) {
+                        UpdateAvailableDialog.show(
+                          context,
+                          release: update,
+                          onDownload: () =>
+                              viewModel.openUrl(update.downloadUrl),
+                          onDismiss: () => viewModel.dismissUpdate(),
+                        );
+                      } else {
+                        showFToast(
+                          context: context,
+                          icon: const Icon(FLucideIcons.check),
+                          title: const Text('App is up to date'),
+                          description: Text(
+                            'v${UpdateCheckerService.currentVersion} is the latest release.',
+                          ),
+                        );
+                      }
+                    },
+                  ),
                   FTile(
                     prefix: const Icon(FLucideIcons.building2),
                     title: const Text('AP Labs · Akshay Kumar'),
