@@ -155,8 +155,29 @@ class NonRootTelemetrySource(private val context: Context) {
         val networkInt = gwInt and (-1 shl hostBits)
         val routerInt = networkInt or 1 // .1 is upstream router/gateway on shared subnets
 
+        val candidateIps = mutableListOf<String>()
+
+        // 1. Any previously known IPs get top priority probe
+        for (knownIp in resolvedHostNames.keys) {
+            if (knownIp.contains(".") && !candidateIps.contains(knownIp)) {
+                candidateIps.add(knownIp)
+            }
+        }
+        for (mdnsIp in mdnsHostNames.keys) {
+            if (mdnsIp.contains(".") && !candidateIps.contains(mdnsIp)) {
+                candidateIps.add(mdnsIp)
+            }
+        }
+
+        // 2. Try reading /proc/net/arp if readable on device
+        for (arpIp in tryReadArpTable()) {
+            if (!candidateIps.contains(arpIp)) {
+                candidateIps.add(arpIp)
+            }
+        }
+
+        // 3. Subnet sweep prioritizing typical Android SoftAP DHCP leases
         val offsets = buildList {
-            // Prioritize typical Android SoftAP DHCP leases first
             for (o in 100..150) add(o)
             for (o in 2..60) add(o)
             for (o in 1..hostCount.coerceAtMost(254)) {
@@ -164,12 +185,13 @@ class NonRootTelemetrySource(private val context: Context) {
             }
         }.distinct()
 
-        val candidateIps = mutableListOf<String>()
         for (offset in offsets) {
             val ipInt = networkInt or offset
             if (ipInt == gwInt || ipInt == routerInt) continue
             val ip = "${(ipInt ushr 24) and 0xFF}.${(ipInt ushr 16) and 0xFF}.${(ipInt ushr 8) and 0xFF}.${ipInt and 0xFF}"
-            candidateIps.add(ip)
+            if (!candidateIps.contains(ip)) {
+                candidateIps.add(ip)
+            }
         }
 
         val futures = mutableListOf<Future<DiscoveredHost?>>()
@@ -189,65 +211,74 @@ class NonRootTelemetrySource(private val context: Context) {
         return found
     }
 
+    private fun tryReadArpTable(): List<String> {
+        val ips = mutableListOf<String>()
+        try {
+            val file = java.io.File("/proc/net/arp")
+            if (file.exists() && file.canRead()) {
+                file.forEachLine { line ->
+                    val tokens = line.split("\\s+".toRegex())
+                    if (tokens.size >= 4 && tokens[0] != "IP") {
+                        val ip = tokens[0]
+                        val flags = tokens[2]
+                        if (flags != "0x0" && ip.contains(".")) {
+                            ips.add(ip)
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
+        return ips
+    }
+
     private fun probeHost(ip: String): DiscoveredHost? {
         var alive = false
         var method = "subnet_probe"
 
-        // 1. If already discovered via mDNS
+        // 1. If actively discovered via mDNS
         if (mdnsHostNames.containsKey(ip)) {
             alive = true
             method = "mdns"
         }
 
-        // 2. Fast ICMP reachability check
+        // 2. NetBIOS Name Query (UDP 137) - Windows / Mac / Samba
         if (!alive) {
-            try {
-                val addr = InetAddress.getByName(ip)
-                if (addr.isReachable(150)) {
-                    alive = true
-                    method = "icmp_echo"
-                }
-            } catch (_: Exception) {
+            val nbName = queryNetBiosName(ip)
+            if (!nbName.isNullOrBlank()) {
+                alive = true
+                method = "netbios"
+                resolvedHostNames[ip] = nbName
             }
         }
 
-        // 3. Connected UDP probe (RFC 792 ICMP Port Unreachable test)
-        // A live peer with no service on high UDP port replies with ICMP Port Unreachable.
-        // On a connected DatagramSocket, Java surfaces this as PortUnreachableException.
-        // A dead host never replies with ICMP Port Unreachable.
+        // 3. LLMNR PTR Query (UDP 5355) - Windows
         if (!alive) {
-            var udpSocket: DatagramSocket? = null
-            try {
-                udpSocket = DatagramSocket()
-                udpSocket.soTimeout = 120
-                udpSocket.connect(InetAddress.getByName(ip), 37424)
-                udpSocket.send(DatagramPacket(byteArrayOf(0x00), 1))
-                val buf = ByteArray(64)
-                udpSocket.receive(DatagramPacket(buf, buf.size))
+            val llmnrName = queryLlmnrPtr(ip)
+            if (!llmnrName.isNullOrBlank()) {
                 alive = true
-                method = "udp_echo"
-            } catch (_: PortUnreachableException) {
-                alive = true
-                method = "icmp_port_unreach"
-            } catch (_: Exception) {
-            } finally {
-                try {
-                    udpSocket?.close()
-                } catch (_: Exception) {
-                }
+                method = "llmnr"
+                resolvedHostNames[ip] = llmnrName
             }
         }
 
-        // 4. TCP handshake probe across well-known listening ports
-        // Only mark alive if socket.connect() completely succeeds without throwing.
+        // 4. TCP handshake and TCP RST (ConnectException) check across common ports
+        // A live host with port open will complete connection.
+        // A live host with port closed will reject with TCP RST -> java.net.ConnectException!
+        // A dead host will timeout (SocketTimeoutException) or throw NoRouteToHostException.
         if (!alive) {
-            val probePorts = intArrayOf(80, 443, 8080, 8008, 5555, 62078)
+            val probePorts = intArrayOf(135, 445, 80, 443, 8080, 5555, 62078, 53, 8008)
             for (port in probePorts) {
                 val socket = Socket()
                 try {
                     socket.connect(InetSocketAddress(ip, port), 120)
                     alive = true
                     method = "tcp_$port"
+                    break
+                } catch (_: ConnectException) {
+                    // TCP RST received from target host! Irrefutable proof host is online.
+                    alive = true
+                    method = "tcp_rst_$port"
                     break
                 } catch (_: Exception) {
                 } finally {
@@ -259,21 +290,43 @@ class NonRootTelemetrySource(private val context: Context) {
             }
         }
 
-        // 5. Hostname resolution (NetBIOS, LLMNR, SSDP, Reverse DNS)
-        var hostname = mdnsHostNames[ip] ?: resolvedHostNames[ip]
-        if (hostname.isNullOrBlank()) {
-            hostname = resolveBestHostname(ip)
-            if (!hostname.isNullOrBlank()) {
-                resolvedHostNames[ip] = hostname
+        // 5. SSDP Query (UDP 1900)
+        if (!alive) {
+            val ssdpName = querySsdpFriendlyName(ip)
+            if (!ssdpName.isNullOrBlank()) {
                 alive = true
-                if (method == "subnet_probe") {
-                    method = "hostname_resolved"
+                method = "ssdp"
+                resolvedHostNames[ip] = ssdpName
+            }
+        }
+
+        // 6. Fast ping fallback
+        if (!alive) {
+            try {
+                val proc = ProcessBuilder("/system/bin/ping", "-c", "1", "-w", "1", ip)
+                    .redirectErrorStream(true)
+                    .start()
+                if (proc.waitFor(250, java.util.concurrent.TimeUnit.MILLISECONDS) && proc.exitValue() == 0) {
+                    alive = true
+                    method = "ping"
+                } else {
+                    proc.destroyForcibly()
                 }
+            } catch (_: Exception) {
             }
         }
 
         if (!alive) {
             return null
+        }
+
+        // Host is confirmed alive. Attach best available hostname.
+        var hostname = mdnsHostNames[ip] ?: resolvedHostNames[ip]
+        if (hostname.isNullOrBlank()) {
+            hostname = resolveBestHostname(ip)
+            if (!hostname.isNullOrBlank()) {
+                resolvedHostNames[ip] = hostname
+            }
         }
 
         return DiscoveredHost(ip = ip, hostname = hostname, discoveryMethod = method)

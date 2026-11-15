@@ -54,6 +54,9 @@ class MainActivity : FlutterActivity() {
     private var lastSubnetScanMs = 0L
 
     @Volatile
+    private var isSubnetScanning = false
+
+    @Volatile
     private var baselineIfaceRx: Long? = null
 
     @Volatile
@@ -161,6 +164,7 @@ class MainActivity : FlutterActivity() {
                     } else {
                         rootSource.stopProbe()
                         activeProbeInterface = null
+                        lastSubnetScanMs = 0L
                     }
                     val snap = capabilityChecker.snapshot(rootModeEnabled)
                     mainHandler.post { result.success(snap.toMap()) }
@@ -274,12 +278,24 @@ class MainActivity : FlutterActivity() {
                         ensureRootProbeRunning(snap.hotspot)
                     } else if (snap.hotspot.active && !snap.hotspot.gatewayIp.isNullOrBlank()) {
                         val now = System.currentTimeMillis()
-                        if (now - lastSubnetScanMs >= 8000L) {
-                            lastSubnetScanMs = now
-                            lastNonRootDevices = nonRootSource.scanSubnetDevices(
-                                snap.hotspot.gatewayIp,
-                                snap.hotspot.prefixLength
-                            )
+                        if (!isSubnetScanning && (now - lastSubnetScanMs >= 4000L || lastNonRootDevices.isEmpty())) {
+                            isSubnetScanning = true
+                            workerExecutor.execute {
+                                try {
+                                    val scanned = nonRootSource.scanSubnetDevices(
+                                        snap.hotspot.gatewayIp,
+                                        snap.hotspot.prefixLength
+                                    )
+                                    lastNonRootDevices = scanned
+                                    lastSubnetScanMs = System.currentTimeMillis()
+                                    val snapAfter = capabilityChecker.snapshot(rootModeEnabled)
+                                    val updatedPayload = collectTelemetryPayload(snapAfter)
+                                    mainHandler.post { eventSink?.success(updatedPayload) }
+                                } catch (_: Exception) {
+                                } finally {
+                                    isSubnetScanning = false
+                                }
+                            }
                         }
                     } else {
                         lastNonRootDevices = emptyList()
