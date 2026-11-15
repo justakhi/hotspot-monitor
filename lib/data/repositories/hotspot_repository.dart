@@ -130,8 +130,8 @@ class HotspotRepository {
     }
   }
 
-  Future<AppReleaseInfo?> checkForUpdate({bool force = false}) {
-    return updateService.checkForUpdate(force: force);
+  Future<AppReleaseInfo?> checkForUpdate() {
+    return updateService.checkForUpdate();
   }
 
   Future<void> setGlobalQuota(QuotaConfig config) async {

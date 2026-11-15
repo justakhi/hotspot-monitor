@@ -1,19 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../domain/models/app_release_info.dart';
 
 /// Checks GitHub Releases API for app updates and parses release changelogs.
 class UpdateCheckerService {
   static const String currentVersion = '1.0.0';
-  static const String _lastCheckKey = 'last_update_check_ms_v1';
   static const String _latestReleaseApiUrl =
       'https://api.github.com/repos/justakhi/hotspot-monitor/releases/latest';
-
-  /// Minimum interval between automatic startup checks (6 hours).
-  static const int minCheckIntervalMs = 6 * 3600 * 1000;
 
   static bool isVersionNewer(String current, String candidate) {
     List<int> parse(String v) {
@@ -34,18 +28,10 @@ class UpdateCheckerService {
   }
 
   Future<AppReleaseInfo?> checkForUpdate({
-    bool force = false,
     String? currentVersionOverride,
     HttpClient? customClient,
   }) async {
     final effectiveCurrent = currentVersionOverride ?? currentVersion;
-    final prefs = await SharedPreferences.getInstance();
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final lastCheck = prefs.getInt(_lastCheckKey) ?? 0;
-
-    if (!force && (now - lastCheck) < minCheckIntervalMs) {
-      return null;
-    }
 
     HttpClient? client;
     try {
@@ -67,13 +53,11 @@ class UpdateCheckerService {
       if (decoded is! Map<String, dynamic>) {
         if (decoded is Map) {
           final mapped = Map<String, dynamic>.from(decoded);
-          await prefs.setInt(_lastCheckKey, now);
           return AppReleaseInfo.fromJson(mapped, currentVersion: effectiveCurrent);
         }
         return null;
       }
 
-      await prefs.setInt(_lastCheckKey, now);
       return AppReleaseInfo.fromJson(decoded, currentVersion: effectiveCurrent);
     } catch (_) {
       return null;

@@ -256,7 +256,7 @@ class SettingsScreen extends StatelessWidget {
                         icon: const Icon(FLucideIcons.loader),
                         title: const Text('Checking GitHub Releases...'),
                       );
-                      final update = await viewModel.checkForUpdate(force: true);
+                      final update = await viewModel.checkForUpdate();
                       if (!context.mounted) return;
                       if (update != null && update.isNewer) {
                         UpdateAvailableDialog.show(

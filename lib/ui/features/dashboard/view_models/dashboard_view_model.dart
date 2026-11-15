@@ -85,7 +85,7 @@ class DashboardViewModel extends ChangeNotifier {
       _isInitializing = false;
       notifyListeners();
     }
-    unawaited(checkForUpdate(force: false));
+    unawaited(checkForUpdate());
   }
 
   void _maybeRefreshHistory() {
@@ -204,9 +204,9 @@ class DashboardViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<AppReleaseInfo?> checkForUpdate({bool force = false}) async {
+  Future<AppReleaseInfo?> checkForUpdate() async {
     try {
-      final info = await repository.checkForUpdate(force: force);
+      final info = await repository.checkForUpdate();
       if (info != null && info.isNewer) {
         _availableUpdate = info;
         notifyListeners();
