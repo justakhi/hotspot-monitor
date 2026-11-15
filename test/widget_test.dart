@@ -45,7 +45,12 @@ void main() {
 
       expect(find.text('Menu & Settings'), findsOneWidget);
       expect(find.text('Root Access'), findsOneWidget);
-      expect(find.text('Session Data Quota'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Clear Saved History'),
+        300,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
       expect(find.text('Clear Saved History'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('AP Labs · Akshay Kumar'),

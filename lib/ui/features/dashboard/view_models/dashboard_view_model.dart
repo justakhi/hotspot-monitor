@@ -30,6 +30,8 @@ class DashboardViewModel extends ChangeNotifier {
   bool _isBusy = false;
   String? _errorMessage;
   AppReleaseInfo? _availableUpdate;
+  bool _isBackgroundServiceEnabled = false;
+  bool _isBatteryOptimizationIgnored = false;
 
   HotspotSnapshot get snapshot => _snapshot;
   List<DeviceHistorySummary> get knownDeviceHistory => _knownDeviceHistory;
@@ -37,6 +39,8 @@ class DashboardViewModel extends ChangeNotifier {
   bool get isBusy => _isBusy;
   String? get errorMessage => _errorMessage;
   AppReleaseInfo? get availableUpdate => _availableUpdate;
+  bool get isBackgroundServiceEnabled => _isBackgroundServiceEnabled;
+  bool get isBatteryOptimizationIgnored => _isBatteryOptimizationIgnored;
 
   QuotaConfig get globalQuota => repository.globalQuota;
   Map<String, DeviceQuota> get deviceQuotas => repository.deviceQuotas;
@@ -79,6 +83,17 @@ class DashboardViewModel extends ChangeNotifier {
       _snapshot = repository.latest;
       _knownDeviceHistory = await repository.getAllDeviceHistory();
       _lastHistoryRefreshMs = DateTime.now().millisecondsSinceEpoch;
+      final preferredBg =
+          await repository.getPreferredBackgroundServiceEnabled();
+      final isRunning = await repository.isBackgroundServiceEnabled();
+      if (preferredBg && !isRunning) {
+        await repository.setBackgroundServiceEnabled(true);
+        _isBackgroundServiceEnabled = true;
+      } else {
+        _isBackgroundServiceEnabled = isRunning;
+      }
+      _isBatteryOptimizationIgnored =
+          await repository.isBatteryOptimizationIgnored();
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -219,6 +234,34 @@ class DashboardViewModel extends ChangeNotifier {
 
   void dismissUpdate() {
     _availableUpdate = null;
+    notifyListeners();
+  }
+
+  Future<bool> openHotspotSettings() => repository.openHotspotSettings();
+
+  Future<bool> toggleHotspot() => repository.toggleHotspot();
+
+  Future<void> toggleBackgroundService(bool enabled) async {
+    await repository.setPreferredBackgroundServiceEnabled(enabled);
+    final ok = await repository.setBackgroundServiceEnabled(enabled);
+    if (ok) {
+      _isBackgroundServiceEnabled = enabled;
+      notifyListeners();
+    }
+  }
+
+  Future<void> requestIgnoreBatteryOptimization() async {
+    await repository.requestIgnoreBatteryOptimization();
+    _isBatteryOptimizationIgnored =
+        await repository.isBatteryOptimizationIgnored();
+    notifyListeners();
+  }
+
+  Future<void> refreshSystemSettingsState() async {
+    _isBackgroundServiceEnabled =
+        await repository.isBackgroundServiceEnabled();
+    _isBatteryOptimizationIgnored =
+        await repository.isBatteryOptimizationIgnored();
     notifyListeners();
   }
 

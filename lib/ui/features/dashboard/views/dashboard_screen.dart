@@ -151,6 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _SessionOverviewCard(
                       snapshot: snapshot,
                       connectedCount: connectedDevices.length,
+                      onToggleHotspot: viewModel.toggleHotspot,
                     ),
                     const SizedBox(height: 12),
                     QuotaProgressCard(viewModel: viewModel),
@@ -180,7 +181,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 8),
                     if (connectedDevices.isEmpty)
-                      _EmptyDevicesCard(snapshot: snapshot)
+                      _EmptyDevicesCard(
+                        snapshot: snapshot,
+                        onOpenSettings: viewModel.openHotspotSettings,
+                      )
                     else
                       for (final device in connectedDevices)
                         Padding(
@@ -445,10 +449,12 @@ class _SessionOverviewCard extends StatelessWidget {
   const _SessionOverviewCard({
     required this.snapshot,
     required this.connectedCount,
+    this.onToggleHotspot,
   });
 
   final HotspotSnapshot snapshot;
   final int connectedCount;
+  final VoidCallback? onToggleHotspot;
 
   @override
   Widget build(BuildContext context) {
@@ -463,24 +469,56 @@ class _SessionOverviewCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: active
-                      ? AppTheme.rootAccent
-                      : theme.colors.mutedForeground,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  active ? 'Hotspot On' : 'Hotspot Off',
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.typography.body.sm.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: theme.colors.foreground,
+              FTappable(
+                onPress: onToggleHotspot,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? AppTheme.rootAccent.withValues(alpha: 0.12)
+                        : theme.colors.secondary,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: active
+                          ? AppTheme.rootAccent.withValues(alpha: 0.35)
+                          : theme.colors.border,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: active
+                              ? AppTheme.rootAccent
+                              : theme.colors.mutedForeground,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        active ? 'Hotspot On' : 'Hotspot Off',
+                        style: theme.typography.body.xs.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: active
+                              ? AppTheme.rootAccent
+                              : theme.colors.foreground,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        FLucideIcons.externalLink,
+                        size: 11,
+                        color: active
+                            ? AppTheme.rootAccent
+                            : theme.colors.mutedForeground,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -629,6 +667,14 @@ class _SessionOverviewCard extends StatelessWidget {
               ),
             ],
           ),
+          if (!active && onToggleHotspot != null) ...[
+            const SizedBox(height: 14),
+            FButton(
+              prefix: const Icon(FLucideIcons.power),
+              onPress: onToggleHotspot,
+              child: const Text('Turn On Hotspot'),
+            ),
+          ],
         ],
       ),
     );
@@ -949,9 +995,13 @@ class _RecentDisconnectedCard extends StatelessWidget {
 }
 
 class _EmptyDevicesCard extends StatelessWidget {
-  const _EmptyDevicesCard({required this.snapshot});
+  const _EmptyDevicesCard({
+    required this.snapshot,
+    this.onOpenSettings,
+  });
 
   final HotspotSnapshot snapshot;
+  final VoidCallback? onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -987,6 +1037,14 @@ class _EmptyDevicesCard extends StatelessWidget {
                 color: theme.colors.mutedForeground,
               ),
             ),
+            if (!active && onOpenSettings != null) ...[
+              const SizedBox(height: 12),
+              FButton(
+                prefix: const Icon(FLucideIcons.externalLink),
+                onPress: onOpenSettings,
+                child: const Text('Open Hotspot Settings'),
+              ),
+            ],
           ],
         ),
       ),

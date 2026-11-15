@@ -3,10 +3,16 @@
 
 package com.justakhi.hotspot_monitor
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.net.wifi.WifiConfiguration
+import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -212,6 +218,44 @@ class MainActivity : FlutterActivity() {
                     mainHandler.post { result.success(list) }
                 }
             }
+            "openHotspotSettings" -> {
+                val ok = launchHotspotSettings()
+                result.success(ok)
+            }
+            "toggleHotspot" -> {
+                workerExecutor.execute {
+                    val directSuccess = tryDirectHotspotToggle()
+                    if (!directSuccess) {
+                        mainHandler.post { launchHotspotSettings() }
+                    }
+                    mainHandler.post { result.success(true) }
+                }
+            }
+            "isBatteryOptimizationIgnored" -> {
+                val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                val ignored = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    pm?.isIgnoringBatteryOptimizations(packageName) ?: false
+                } else {
+                    true
+                }
+                result.success(ignored)
+            }
+            "requestIgnoreBatteryOptimization" -> {
+                val ok = requestIgnoreBatteryOpt()
+                result.success(ok)
+            }
+            "setBackgroundServiceEnabled" -> {
+                val enabled = call.argument<Boolean>("enabled") ?: false
+                if (enabled) {
+                    HotspotMonitorService.startService(applicationContext)
+                } else {
+                    HotspotMonitorService.stopService(applicationContext)
+                }
+                result.success(true)
+            }
+            "isBackgroundServiceEnabled" -> {
+                result.success(HotspotMonitorService.isRunning)
+            }
             else -> result.notImplemented()
         }
     }
@@ -369,6 +413,22 @@ class MainActivity : FlutterActivity() {
             }
         }
 
+        if (HotspotMonitorService.isRunning) {
+            val count = if (rootModeEnabled) devicesPayload.count { (it["isOnline"] as? Boolean) == true } else lastNonRootDevices.size
+            val totalMb = (sessionDownloadBytes + sessionUploadBytes) / (1024.0 * 1024.0)
+            val title = if (snap.hotspot.active) {
+                "Hotspot Active · $count Device${if (count != 1) "s" else ""}"
+            } else {
+                "Hotspot Monitor Running"
+            }
+            val text = if (snap.hotspot.active) {
+                "Session: %.1f MB · ↓ %s ↑ %s".format(totalMb, formatSpeed(liveDownBps), formatSpeed(liveUpBps))
+            } else {
+                "Hotspot is currently turned off"
+            }
+            HotspotMonitorService.updateNotification(applicationContext, title, text)
+        }
+
         return mapOf(
             "timestampMs" to now,
             "sessionStartMs" to sessionStartMs,
@@ -382,5 +442,78 @@ class MainActivity : FlutterActivity() {
             "liveUploadBps" to liveUpBps,
             "devices" to devicesPayload
         )
+    }
+
+    private fun launchHotspotSettings(): Boolean {
+        val intents = listOf(
+            Intent("android.settings.TETHER_SETTINGS"),
+            Intent("android.settings.WIFI_AP_SETTINGS"),
+            Intent(Settings.ACTION_WIRELESS_SETTINGS)
+        )
+        for (intent in intents) {
+            try {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                return true
+            } catch (_: Exception) {
+            }
+        }
+        return false
+    }
+
+    private fun tryDirectHotspotToggle(): Boolean {
+        try {
+            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            val isApOn = wifiManager?.javaClass?.getDeclaredMethod("isWifiApEnabled")?.let {
+                it.isAccessible = true
+                it.invoke(wifiManager) as? Boolean
+            } ?: false
+            val setAp = wifiManager?.javaClass?.getDeclaredMethod(
+                "setWifiApEnabled",
+                WifiConfiguration::class.java,
+                Boolean::class.java
+            )
+            if (setAp != null) {
+                setAp.isAccessible = true
+                setAp.invoke(wifiManager, null, !isApOn)
+                return true
+            }
+        } catch (_: Exception) {
+        }
+        return false
+    }
+
+    private fun requestIgnoreBatteryOpt(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+            if (pm?.isIgnoringBatteryOptimizations(packageName) != true) {
+                try {
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:$packageName")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(intent)
+                    return true
+                } catch (_: Exception) {
+                    try {
+                        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        return true
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        }
+        return false
+    }
+
+    private fun formatSpeed(bps: Long): String {
+        return when {
+            bps >= 1_000_000 -> "%.1f MB/s".format(bps / 1_000_000.0)
+            bps >= 1_000 -> "%.0f KB/s".format(bps / 1_000.0)
+            else -> "$bps B/s"
+        }
     }
 }

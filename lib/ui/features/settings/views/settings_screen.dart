@@ -107,6 +107,55 @@ class SettingsScreen extends StatelessWidget {
                       child: Text(snapshot.probeActive ? 'DPI On' : 'Idle'),
                     ),
                   ),
+                  FTile(
+                    prefix: const Icon(FLucideIcons.power),
+                    title: const Text('Portable Hotspot'),
+                    subtitle: Text(
+                      caps.hotspotActive
+                          ? 'Hotspot is active · Tap to open settings or toggle'
+                          : 'Hotspot is turned off · Tap to turn on',
+                    ),
+                    suffix: const Icon(FLucideIcons.externalLink),
+                    onPress: viewModel.openHotspotSettings,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _SectionTitle(title: 'Background Execution & Power'),
+              const SizedBox(height: 8),
+              FTileGroup(
+                children: [
+                  FTile(
+                    prefix: const Icon(FLucideIcons.bellRing),
+                    title: const Text('Keep Running in Background'),
+                    subtitle: const Text(
+                      'Live notification with connected count and speeds; keeps packet engine alive',
+                    ),
+                    suffix: FSwitch(
+                      value: viewModel.isBackgroundServiceEnabled,
+                      onChange: (val) => viewModel.toggleBackgroundService(val),
+                    ),
+                  ),
+                  FTile(
+                    prefix: const Icon(FLucideIcons.batteryCharging),
+                    title: const Text('Battery Optimization'),
+                    subtitle: Text(
+                      viewModel.isBatteryOptimizationIgnored
+                          ? 'Unrestricted · System will not throttle or kill background monitoring'
+                          : 'Optimized · Tap to exclude from battery restrictions',
+                    ),
+                    suffix: FBadge(
+                      variant: viewModel.isBatteryOptimizationIgnored
+                          ? FBadgeVariant.secondary
+                          : FBadgeVariant.outline,
+                      child: Text(
+                        viewModel.isBatteryOptimizationIgnored
+                            ? 'Unrestricted'
+                            : 'Optimized',
+                      ),
+                    ),
+                    onPress: viewModel.requestIgnoreBatteryOptimization,
+                  ),
                 ],
               ),
               const SizedBox(height: 20),

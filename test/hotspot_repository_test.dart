@@ -84,6 +84,24 @@ class FakeHotspotPlatformService implements HotspotPlatformService {
   Future<List<String>> getBlockedIps() async => blockedIps.toList();
 
   @override
+  Future<bool> openHotspotSettings() async => true;
+
+  @override
+  Future<bool> toggleHotspot() async => true;
+
+  @override
+  Future<bool> isBatteryOptimizationIgnored() async => true;
+
+  @override
+  Future<bool> requestIgnoreBatteryOptimization() async => true;
+
+  @override
+  Future<bool> setBackgroundServiceEnabled(bool enabled) async => true;
+
+  @override
+  Future<bool> isBackgroundServiceEnabled() async => false;
+
+  @override
   Future<CapabilityState> setRootModeEnabled(bool enabled) async {
     capabilities = CapabilityState(
       usageAccessGranted: true,
@@ -333,6 +351,29 @@ void main() {
     );
     expect(unblocked, true);
     expect(fakePlatform.blockedIps.contains('192.168.43.101'), false);
+
+    repo.dispose();
+    await fakePlatform.controller.close();
+  });
+
+  test('delegates hotspot settings, toggling, and background execution', () async {
+    SharedPreferences.setMockInitialValues({});
+    final fakePlatform = FakeHotspotPlatformService();
+    final repo = HotspotRepository(
+      platformService: fakePlatform,
+      aliasService: DeviceAliasService(),
+      historyStore: InMemoryHistoryStore(),
+    );
+
+    expect(await repo.getPreferredBackgroundServiceEnabled(), true);
+    await repo.setPreferredBackgroundServiceEnabled(false);
+    expect(await repo.getPreferredBackgroundServiceEnabled(), false);
+    expect(await repo.openHotspotSettings(), true);
+    expect(await repo.toggleHotspot(), true);
+    expect(await repo.isBatteryOptimizationIgnored(), true);
+    expect(await repo.requestIgnoreBatteryOptimization(), true);
+    expect(await repo.setBackgroundServiceEnabled(true), true);
+    expect(await repo.isBackgroundServiceEnabled(), false);
 
     repo.dispose();
     await fakePlatform.controller.close();

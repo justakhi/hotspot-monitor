@@ -18,6 +18,12 @@ abstract class HotspotPlatformService {
     required bool blocked,
   });
   Future<List<String>> getBlockedIps();
+  Future<bool> openHotspotSettings();
+  Future<bool> toggleHotspot();
+  Future<bool> isBatteryOptimizationIgnored();
+  Future<bool> requestIgnoreBatteryOptimization();
+  Future<bool> setBackgroundServiceEnabled(bool enabled);
+  Future<bool> isBackgroundServiceEnabled();
 }
 
 /// Platform channel implementation backed by `MainActivity.kt`.
@@ -105,5 +111,46 @@ class MethodChannelHotspotPlatformService implements HotspotPlatformService {
   Future<List<String>> getBlockedIps() async {
     final res = await _control.invokeListMethod<String>('getBlockedIps');
     return res ?? const [];
+  }
+
+  @override
+  Future<bool> openHotspotSettings() async {
+    final res = await _control.invokeMethod<bool>('openHotspotSettings');
+    return res ?? false;
+  }
+
+  @override
+  Future<bool> toggleHotspot() async {
+    final res = await _control.invokeMethod<bool>('toggleHotspot');
+    return res ?? false;
+  }
+
+  @override
+  Future<bool> isBatteryOptimizationIgnored() async {
+    final res = await _control.invokeMethod<bool>('isBatteryOptimizationIgnored');
+    return res ?? false;
+  }
+
+  @override
+  Future<bool> requestIgnoreBatteryOptimization() async {
+    final res = await _control.invokeMethod<bool>(
+      'requestIgnoreBatteryOptimization',
+    );
+    return res ?? false;
+  }
+
+  @override
+  Future<bool> setBackgroundServiceEnabled(bool enabled) async {
+    final res = await _control.invokeMethod<bool>(
+      'setBackgroundServiceEnabled',
+      {'enabled': enabled},
+    );
+    return res ?? false;
+  }
+
+  @override
+  Future<bool> isBackgroundServiceEnabled() async {
+    final res = await _control.invokeMethod<bool>('isBackgroundServiceEnabled');
+    return res ?? false;
   }
 }

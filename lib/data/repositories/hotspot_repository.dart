@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../domain/models/app_release_info.dart';
 import '../../domain/models/capability_state.dart';
 import '../../domain/models/device_quota.dart';
@@ -221,6 +223,35 @@ class HotspotRepository {
     await _writeQueue;
     await historyStore.clearAll();
   }
+
+  static const String _backgroundServicePrefKey =
+      'pref_background_service_enabled';
+
+  Future<bool> getPreferredBackgroundServiceEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_backgroundServicePrefKey) ?? true;
+  }
+
+  Future<void> setPreferredBackgroundServiceEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_backgroundServicePrefKey, enabled);
+  }
+
+  Future<bool> openHotspotSettings() => platformService.openHotspotSettings();
+
+  Future<bool> toggleHotspot() => platformService.toggleHotspot();
+
+  Future<bool> isBatteryOptimizationIgnored() =>
+      platformService.isBatteryOptimizationIgnored();
+
+  Future<bool> requestIgnoreBatteryOptimization() =>
+      platformService.requestIgnoreBatteryOptimization();
+
+  Future<bool> setBackgroundServiceEnabled(bool enabled) =>
+      platformService.setBackgroundServiceEnabled(enabled);
+
+  Future<bool> isBackgroundServiceEnabled() =>
+      platformService.isBackgroundServiceEnabled();
 
   void _enqueueRecord(HotspotSnapshot snap) {
     _writeQueue = _writeQueue
