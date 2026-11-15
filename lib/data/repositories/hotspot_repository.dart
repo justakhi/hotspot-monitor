@@ -1,26 +1,34 @@
 import 'dart:async';
 
 import '../../domain/models/capability_state.dart';
+import '../../domain/models/device_quota.dart';
 import '../../domain/models/history_report.dart';
 import '../../domain/models/hotspot_snapshot.dart';
+import '../../domain/models/quota_config.dart';
 import '../../domain/models/service_usage.dart';
 import '../services/device_alias_service.dart';
 import '../services/history_store.dart';
 import '../services/hotspot_platform_service.dart';
+import '../services/quota_service.dart';
 
 /// Single source of truth merging native telemetry, aliases, and SQLite history.
 class HotspotRepository {
   HotspotRepository({
     required this.platformService,
     required this.aliasService,
+    QuotaService? quotaService,
     HistoryStore? historyStore,
-  }) : historyStore = historyStore ?? SqliteHistoryStore();
+  })  : quotaService = quotaService ?? QuotaService(),
+        historyStore = historyStore ?? SqliteHistoryStore();
 
   final HotspotPlatformService platformService;
   final DeviceAliasService aliasService;
+  final QuotaService quotaService;
   final HistoryStore historyStore;
 
   Map<String, String> _aliases = const {};
+  QuotaConfig _globalQuota = QuotaConfig.defaults;
+  Map<String, DeviceQuota> _deviceQuotas = const {};
   HotspotSnapshot _latest = HotspotSnapshot.empty;
   final StreamController<HotspotSnapshot> _controller =
       StreamController<HotspotSnapshot>.broadcast();
@@ -33,16 +41,21 @@ class HotspotRepository {
 
   HotspotSnapshot get latest => _latest;
   Map<String, String> get aliases => _aliases;
+  QuotaConfig get globalQuota => _globalQuota;
+  Map<String, DeviceQuota> get deviceQuotas => _deviceQuotas;
   Stream<HotspotSnapshot> get snapshots => _controller.stream;
 
   Future<void> initialize() async {
     await historyStore.initialize();
     _aliases = await aliasService.loadAliases();
+    _globalQuota = await quotaService.loadGlobalQuota();
+    _deviceQuotas = await quotaService.loadDeviceQuotas();
     _nativeSub ??= platformService.telemetryStream.listen(
       (rawMap) {
         final snap = HotspotSnapshot.fromMap(rawMap, aliases: _aliases);
         _latest = snap;
         _enqueueRecord(snap);
+        _checkAutoBlocks(snap);
         if (!_controller.isClosed) {
           _controller.add(_latest);
         }
@@ -109,6 +122,65 @@ class HotspotRepository {
     _latest = _latest.withAliases(_aliases);
     if (!_controller.isClosed) {
       _controller.add(_latest);
+    }
+  }
+
+  Future<void> setGlobalQuota(QuotaConfig config) async {
+    _globalQuota = await quotaService.saveGlobalQuota(config);
+    if (!_controller.isClosed) {
+      _controller.add(_latest);
+    }
+  }
+
+  Future<void> setDeviceQuota(DeviceQuota quota) async {
+    _deviceQuotas = await quotaService.saveDeviceQuota(quota);
+    if (!_controller.isClosed) {
+      _controller.add(_latest);
+    }
+  }
+
+  Future<void> removeDeviceQuota(String deviceId) async {
+    _deviceQuotas = await quotaService.removeDeviceQuota(deviceId);
+    if (!_controller.isClosed) {
+      _controller.add(_latest);
+    }
+  }
+
+  Future<bool> setDeviceBlocked({
+    required String ip,
+    String? mac,
+    required bool blocked,
+  }) async {
+    final success = await platformService.setDeviceBlocked(
+      ip: ip,
+      mac: mac,
+      blocked: blocked,
+    );
+    if (success) {
+      _deviceQuotas = await quotaService.setDeviceBlocked(ip, blocked);
+      if (mac != null) {
+        _deviceQuotas = await quotaService.setDeviceBlocked(mac, blocked);
+      }
+      await scanNow();
+    }
+    return success;
+  }
+
+  Future<void> _checkAutoBlocks(HotspotSnapshot snap) async {
+    if (!snap.isRootMode) return;
+    for (final device in snap.devices) {
+      final quota = _deviceQuotas[device.id] ?? _deviceQuotas[device.ip];
+      if (quota != null &&
+          quota.autoBlockExceeded &&
+          quota.limitBytes != null &&
+          device.totalBytes >= quota.limitBytes! &&
+          !device.isBlocked) {
+        await setDeviceBlocked(
+          ip: device.ip,
+          mac: device.mac,
+          blocked: true,
+        );
+      }
     }
   }
 

@@ -94,6 +94,7 @@ class MainActivity : FlutterActivity() {
         stopTelemetryLoop()
         nonRootSource.stopMdnsDiscovery()
         rootSource.stopProbe()
+        rootSource.flushAllBlocks()
         workerExecutor.shutdownNow()
         scheduler.shutdownNow()
         super.onDestroy()
@@ -187,6 +188,28 @@ class MainActivity : FlutterActivity() {
                         eventSink?.success(payload)
                         result.success(payload)
                     }
+                }
+            }
+            "setDeviceBlocked" -> {
+                val ip = call.argument<String>("ip")?.trim()
+                val blocked = call.argument<Boolean>("blocked") ?: false
+                if (ip.isNullOrBlank()) {
+                    result.error("INVALID_ARGS", "IP address required", null)
+                } else {
+                    workerExecutor.execute {
+                        val ok = if (rootModeEnabled) {
+                            rootSource.setDeviceBlocked(ip, blocked)
+                        } else {
+                            false
+                        }
+                        mainHandler.post { result.success(ok) }
+                    }
+                }
+            }
+            "getBlockedIps" -> {
+                workerExecutor.execute {
+                    val list = rootSource.blockedIps.toList()
+                    mainHandler.post { result.success(list) }
                 }
             }
             else -> result.notImplemented()

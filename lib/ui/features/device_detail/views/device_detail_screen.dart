@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 
+import '../../../../domain/models/device_quota.dart';
 import '../../../../domain/models/history_report.dart';
 import '../../../../domain/models/service_usage.dart';
 import '../../../core/theme/app_theme.dart';
@@ -127,6 +128,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
         final isRoot = snapshot.isRootMode;
         final activeRange = _historyRange;
+        final quota = widget.viewModel.deviceQuotas[widget.deviceId] ??
+            widget.viewModel.deviceQuotas[ip];
+        final isBlocked = liveDevice?.isBlocked ?? quota?.isBlocked ?? false;
 
         final int downBytes;
         final int upBytes;
@@ -201,6 +205,16 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 txBitrateMbps: txBitrateMbps,
                 rxBitrateMbps: rxBitrateMbps,
                 isRoot: isRoot,
+              ),
+              const SizedBox(height: 12),
+              _DeviceAccessControlCard(
+                deviceId: widget.deviceId,
+                deviceIp: ip,
+                deviceMac: mac,
+                isBlocked: isBlocked,
+                isRoot: isRoot,
+                quota: quota,
+                viewModel: widget.viewModel,
               ),
               const SizedBox(height: 12),
               if (isRoot || activeRange != null || fallback != null) ...[
@@ -927,12 +941,325 @@ class _RootLockedCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Standard Android blocks third-party apps from reading per-client hotspot packets and MAC addresses. Root permission is required (see Menu & Settings if you want to retry).',
-            style: theme.typography.body.xs.copyWith(
-              color: theme.colors.mutedForeground,
-            ),
           ),
         ],
       ),
     );
+  }
+}
+
+class _DeviceAccessControlCard extends StatelessWidget {
+  const _DeviceAccessControlCard({
+    required this.deviceId,
+    required this.deviceIp,
+    required this.deviceMac,
+    required this.isBlocked,
+    required this.isRoot,
+    required this.quota,
+    required this.viewModel,
+  });
+
+  final String deviceId;
+  final String deviceIp;
+  final String? deviceMac;
+  final bool isBlocked;
+  final bool isRoot;
+  final DeviceQuota? quota;
+  final DashboardViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isBlocked ? FLucideIcons.shieldAlert : FLucideIcons.shieldCheck,
+                size: 16,
+                color: isBlocked ? const Color(0xFFEF4444) : AppTheme.rootAccent,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Access & Quota Control',
+                  style: theme.typography.body.sm.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colors.foreground,
+                  ),
+                ),
+              ),
+              FBadge(
+                variant: isBlocked
+                    ? FBadgeVariant.destructive
+                    : FBadgeVariant.secondary,
+                child: Text(isBlocked ? 'Blocked' : 'Active'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (isRoot) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Internet Access',
+                        style: theme.typography.body.sm.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isBlocked
+                            ? 'Traffic dropped in memory via iptables'
+                            : 'Allowed to access internet',
+                        style: theme.typography.body.xs.copyWith(
+                          color: theme.colors.mutedForeground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                FSwitch(
+                  value: !isBlocked,
+                  onChange: (allowed) async {
+                    await viewModel.toggleDeviceBlock(
+                      deviceIp,
+                      mac: deviceMac,
+                      blocked: !allowed,
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Device Data Limit',
+                        style: theme.typography.body.sm.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        quota?.limitBytes != null
+                            ? '${Formatters.bytes(quota!.limitBytes!)} · Auto-block ${quota!.autoBlockExceeded ? "On" : "Off"}'
+                            : 'No per-device limit set',
+                        style: theme.typography.body.xs.copyWith(
+                          color: theme.colors.mutedForeground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                FButton(
+                  size: FButtonSizeVariant.xs,
+                  variant: FButtonVariant.outline,
+                  mainAxisSize: MainAxisSize.min,
+                  onPress: () => _showDeviceQuotaDialog(context),
+                  child: Text(quota?.limitBytes != null ? 'Edit' : 'Set Limit'),
+                ),
+              ],
+            ),
+          ] else ...[
+            Text(
+              'Per-device internet cutoff and individual quotas require Root access. Global hotspot quota alerts are active on non-root.',
+              style: theme.typography.body.xs.copyWith(
+                color: theme.colors.mutedForeground,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showDeviceQuotaDialog(BuildContext context) async {
+    var limitMb = (quota?.limitBytes ?? 500 * 1024 * 1024) ~/ (1024 * 1024);
+    var hasLimit = quota?.limitBytes != null;
+    var autoBlock = quota?.autoBlockExceeded ?? false;
+
+    final controller = TextEditingController(text: '$limitMb');
+
+    final saved = await showAdaptiveDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setState) {
+          final dialogTheme = ctx.theme;
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: AppCard(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(FLucideIcons.gauge, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Device Data Limit',
+                        style: dialogTheme.typography.display.sm.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Enable Device Limit',
+                        style: dialogTheme.typography.body.sm,
+                      ),
+                      FSwitch(
+                        value: hasLimit,
+                        onChange: (val) => setState(() => hasLimit = val),
+                      ),
+                    ],
+                  ),
+                  if (hasLimit) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final preset in [250, 500, 1024, 2048])
+                          FTappable(
+                            onPress: () {
+                              setState(() {
+                                limitMb = preset;
+                                controller.text = '$preset';
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: limitMb == preset
+                                    ? dialogTheme.colors.primary
+                                    : dialogTheme.colors.muted,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                preset >= 1024
+                                    ? '${preset ~/ 1024} GB'
+                                    : '$preset MB',
+                                style: dialogTheme.typography.body.xs.copyWith(
+                                  color: limitMb == preset
+                                      ? dialogTheme.colors.primaryForeground
+                                      : dialogTheme.colors.foreground,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    FTextField(
+                      control: .managed(controller: controller),
+                      keyboardType: TextInputType.number,
+                      label: const Text('Custom Limit (MB)'),
+                      hint: '500',
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Auto-block when limit reached',
+                                style: dialogTheme.typography.body.sm,
+                              ),
+                              Text(
+                                'Drops device internet in RAM firewall',
+                                style: dialogTheme.typography.body.xs.copyWith(
+                                  color: dialogTheme.colors.mutedForeground,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        FSwitch(
+                          value: autoBlock,
+                          onChange: (val) => setState(() => autoBlock = val),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      FButton(
+                        variant: FButtonVariant.outline,
+                        size: FButtonSizeVariant.sm,
+                        mainAxisSize: MainAxisSize.min,
+                        onPress: () => Navigator.of(dialogCtx).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 8),
+                      FButton(
+                        size: FButtonSizeVariant.sm,
+                        mainAxisSize: MainAxisSize.min,
+                        onPress: () {
+                          final parsed = int.tryParse(controller.text.trim());
+                          if (parsed != null && parsed > 0) {
+                            limitMb = parsed;
+                          }
+                          Navigator.of(dialogCtx).pop(true);
+                        },
+                        child: const Text('Save'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    controller.dispose();
+
+    if (saved == true) {
+      if (!hasLimit) {
+        await viewModel.removeDeviceQuota(deviceId);
+      } else {
+        await viewModel.updateDeviceQuota(
+          DeviceQuota(
+            deviceId: deviceId,
+            limitBytes: limitMb * 1024 * 1024,
+            autoBlockExceeded: autoBlock,
+            isBlocked: isBlocked,
+          ),
+        );
+      }
+    }
   }
 }

@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:forui/forui.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/quota_progress_card.dart';
 import '../../dashboard/view_models/dashboard_view_model.dart';
 import '../../history/views/connection_history_screen.dart';
 import '../../reports/views/reports_screen.dart';
@@ -102,6 +104,32 @@ class SettingsScreen extends StatelessWidget {
                           : FBadgeVariant.outline,
                       child: Text(snapshot.probeActive ? 'DPI On' : 'Idle'),
                     ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _SectionTitle(title: 'Data Quota & Limits'),
+              const SizedBox(height: 8),
+              FTileGroup(
+                children: [
+                  FTile(
+                    prefix: const Icon(FLucideIcons.gauge),
+                    title: const Text('Session Data Quota'),
+                    subtitle: Text(
+                      viewModel.globalQuota.enabled
+                          ? '${Formatters.bytes(viewModel.globalQuota.limitBytes)} budget · Warn at ${viewModel.globalQuota.warningPercent}%'
+                          : 'Disabled · Tap to set a session data limit',
+                    ),
+                    suffix: FBadge(
+                      variant: viewModel.globalQuota.enabled
+                          ? FBadgeVariant.primary
+                          : FBadgeVariant.secondary,
+                      child: Text(
+                        viewModel.globalQuota.enabled ? 'Active' : 'Off',
+                      ),
+                    ),
+                    onPress: () =>
+                        QuotaProgressCard.showEditDialog(context, viewModel),
                   ),
                 ],
               ),

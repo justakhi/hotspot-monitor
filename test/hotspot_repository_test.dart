@@ -6,7 +6,9 @@ import 'package:hotspot_monitor/data/services/device_alias_service.dart';
 import 'package:hotspot_monitor/data/services/history_store.dart';
 import 'package:hotspot_monitor/data/services/hotspot_platform_service.dart';
 import 'package:hotspot_monitor/domain/models/capability_state.dart';
+import 'package:hotspot_monitor/domain/models/device_quota.dart';
 import 'package:hotspot_monitor/domain/models/history_report.dart';
+import 'package:hotspot_monitor/domain/models/quota_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeHotspotPlatformService implements HotspotPlatformService {
@@ -61,6 +63,25 @@ class FakeHotspotPlatformService implements HotspotPlatformService {
 
   @override
   Future<bool> openUrl(String url) async => true;
+
+  final Set<String> blockedIps = {};
+
+  @override
+  Future<bool> setDeviceBlocked({
+    required String ip,
+    String? mac,
+    required bool blocked,
+  }) async {
+    if (blocked) {
+      blockedIps.add(ip);
+    } else {
+      blockedIps.remove(ip);
+    }
+    return true;
+  }
+
+  @override
+  Future<List<String>> getBlockedIps() async => blockedIps.toList();
 
   @override
   Future<CapabilityState> setRootModeEnabled(bool enabled) async {
@@ -221,6 +242,97 @@ void main() {
 
     final allHistory = await repo.getAllDeviceHistory();
     expect(allHistory.length, 2);
+
+    repo.dispose();
+    await fakePlatform.controller.close();
+  });
+
+  test('manages global quota and triggers auto-block on device limit exceeded in root mode', () async {
+    SharedPreferences.setMockInitialValues({});
+    final fakePlatform = FakeHotspotPlatformService();
+    final repo = HotspotRepository(
+      platformService: fakePlatform,
+      aliasService: DeviceAliasService(),
+      historyStore: InMemoryHistoryStore(),
+    );
+
+    await repo.initialize();
+
+    // Default global quota
+    expect(repo.globalQuota.enabled, false);
+
+    // Set custom global quota
+    await repo.setGlobalQuota(
+      const QuotaConfig(
+        enabled: true,
+        limitBytes: 1024 * 1024 * 100, // 100 MB
+        warningPercent: 80,
+      ),
+    );
+    expect(repo.globalQuota.enabled, true);
+    expect(repo.globalQuota.limitBytes, 1024 * 1024 * 100);
+
+    // Set per-device quota with auto-block
+    await repo.setDeviceQuota(
+      const DeviceQuota(
+        deviceId: '192.168.43.101',
+        limitBytes: 5000,
+        autoBlockExceeded: true,
+      ),
+    );
+
+    expect(repo.deviceQuotas['192.168.43.101']?.autoBlockExceeded, true);
+    expect(fakePlatform.blockedIps.contains('192.168.43.101'), false);
+
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    // Push payload where device 1 exceeds 5000 bytes (6000 bytes total)
+    fakePlatform.controller.add({
+      'timestampMs': nowMs,
+      'sessionStartMs': nowMs - 1000,
+      'mode': 'root',
+      'probeActive': true,
+      'probeError': null,
+      'sessionDownloadBytes': 5000,
+      'sessionUploadBytes': 1000,
+      'liveDownloadBps': 100,
+      'liveUploadBps': 20,
+      'devices': [
+        {
+          'id': '192.168.43.101',
+          'ip': '192.168.43.101',
+          'mac': '02:00:00:11:22:33',
+          'hostname': 'Test-Laptop',
+          'vendor': 'Google',
+          'isRandomizedMac': false,
+          'neighborState': 'REACHABLE',
+          'rssiDbm': -45,
+          'txBitrateMbps': 144.0,
+          'rxBitrateMbps': 144.0,
+          'isOnline': true,
+          'lastSeenMs': nowMs,
+          'downloadBytes': 5000,
+          'uploadBytes': 1000,
+          'currentDownloadBps': 100,
+          'currentUploadBps': 20,
+          'isBlocked': false,
+          'services': <Map<String, dynamic>>[],
+        },
+      ],
+    });
+
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    // Auto-block should have triggered
+    expect(fakePlatform.blockedIps.contains('192.168.43.101'), true);
+
+    // Manual unblock
+    final unblocked = await repo.setDeviceBlocked(
+      ip: '192.168.43.101',
+      mac: '02:00:00:11:22:33',
+      blocked: false,
+    );
+    expect(unblocked, true);
+    expect(fakePlatform.blockedIps.contains('192.168.43.101'), false);
 
     repo.dispose();
     await fakePlatform.controller.close();

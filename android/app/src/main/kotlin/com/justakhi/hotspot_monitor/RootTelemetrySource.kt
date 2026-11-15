@@ -116,6 +116,8 @@ class RootTelemetrySource {
     @Volatile
     private var lastNetworkStackScanMs = 0L
 
+    val blockedIps = ConcurrentHashMap.newKeySet<String>()
+
     @Volatile
     var suCommand: String = "su"
 
@@ -268,6 +270,42 @@ class RootTelemetrySource {
         trafficById.clear()
         clientsById.clear()
         ipToMac.clear()
+        flushAllBlocks()
+    }
+
+    fun setDeviceBlocked(ip: String, block: Boolean): Boolean {
+        if (!ip.contains(".") || ip.length < 7) return false
+        val chain = "HM_BLOCK"
+        val script = buildString {
+            // Ensure chain exists and is hooked into FORWARD chain in RAM
+            append("iptables -N $chain 2>/dev/null; ")
+            append("iptables -C FORWARD -j $chain 2>/dev/null || iptables -I FORWARD 1 -j $chain; ")
+            if (block) {
+                append("iptables -C $chain -s $ip -j DROP 2>/dev/null || iptables -I $chain 1 -s $ip -j DROP; ")
+                append("iptables -C $chain -d $ip -j DROP 2>/dev/null || iptables -I $chain 1 -d $ip -j DROP; ")
+            } else {
+                append("iptables -D $chain -s $ip -j DROP 2>/dev/null; ")
+                append("iptables -D $chain -d $ip -j DROP 2>/dev/null; ")
+            }
+        }
+        val out = runSuCommand(script, 3)
+        if (out != null) {
+            if (block) {
+                blockedIps.add(ip)
+            } else {
+                blockedIps.remove(ip)
+            }
+            return true
+        }
+        return false
+    }
+
+    fun flushAllBlocks() {
+        if (blockedIps.isEmpty()) return
+        val chain = "HM_BLOCK"
+        val script = "iptables -F $chain 2>/dev/null; iptables -D FORWARD -j $chain 2>/dev/null; iptables -X $chain 2>/dev/null"
+        runSuCommand(script, 3)
+        blockedIps.clear()
     }
 
     fun refreshClients(
@@ -566,6 +604,7 @@ class RootTelemetrySource {
                 "uploadBytes" to (traffic?.uploadBytes ?: 0L),
                 "currentDownloadBps" to (traffic?.currentDownloadBps ?: 0L),
                 "currentUploadBps" to (traffic?.currentUploadBps ?: 0L),
+                "isBlocked" to (blockedIps.contains(meta?.ip) || blockedIps.contains(traffic?.ip)),
                 "services" to services
             )
         }.sortedByDescending {

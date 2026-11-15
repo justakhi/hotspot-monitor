@@ -12,6 +12,12 @@ abstract class HotspotPlatformService {
   Future<void> resetSession();
   Future<Map<Object?, Object?>> scanNow();
   Future<bool> openUrl(String url);
+  Future<bool> setDeviceBlocked({
+    required String ip,
+    String? mac,
+    required bool blocked,
+  });
+  Future<List<String>> getBlockedIps();
 }
 
 /// Platform channel implementation backed by `MainActivity.kt`.
@@ -79,5 +85,25 @@ class MethodChannelHotspotPlatformService implements HotspotPlatformService {
   Future<bool> openUrl(String url) async {
     final opened = await _control.invokeMethod<bool>('openUrl', {'url': url});
     return opened ?? false;
+  }
+
+  @override
+  Future<bool> setDeviceBlocked({
+    required String ip,
+    String? mac,
+    required bool blocked,
+  }) async {
+    final res = await _control.invokeMethod<bool>('setDeviceBlocked', {
+      'ip': ip,
+      'mac': mac,
+      'blocked': blocked,
+    });
+    return res ?? false;
+  }
+
+  @override
+  Future<List<String>> getBlockedIps() async {
+    final res = await _control.invokeListMethod<String>('getBlockedIps');
+    return res ?? const [];
   }
 }

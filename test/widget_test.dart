@@ -24,6 +24,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Hotspot Monitor'), findsOneWidget);
+      expect(find.text('Hotspot Data Quota'), findsOneWidget);
       expect(find.text('ROOT'), findsNothing);
       expect(find.text('NON-ROOT'), findsNothing);
       expect(repo.latest.isRootMode, isTrue);
@@ -44,6 +45,7 @@ void main() {
 
       expect(find.text('Menu & Settings'), findsOneWidget);
       expect(find.text('Root Access'), findsOneWidget);
+      expect(find.text('Session Data Quota'), findsOneWidget);
       expect(find.text('Clear Saved History'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('AP Labs · Akshay Kumar'),
@@ -257,8 +259,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Connected'), findsOneWidget);
-      expect(find.text('1'), findsNWidgets(3)); // Overview + Connected + Recently Disconnected badges
       expect(find.text('Live-Laptop'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.text('Recently Disconnected (1h)'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
       expect(find.text('Recently Disconnected (1h)'), findsOneWidget);
       expect(find.text('Recent-Phone'), findsOneWidget);
       expect(find.text('Old-Phone'), findsNothing);

@@ -4,8 +4,17 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../data/repositories/hotspot_repository.dart';
 import '../../../../domain/models/connected_device.dart';
+import '../../../../domain/models/device_quota.dart';
 import '../../../../domain/models/history_report.dart';
 import '../../../../domain/models/hotspot_snapshot.dart';
+import '../../../../domain/models/quota_config.dart';
+
+enum QuotaStatus {
+  disabled,
+  normal,
+  warning,
+  exceeded,
+}
 
 class DashboardViewModel extends ChangeNotifier {
   DashboardViewModel({required this.repository});
@@ -25,6 +34,25 @@ class DashboardViewModel extends ChangeNotifier {
   bool get isInitializing => _isInitializing;
   bool get isBusy => _isBusy;
   String? get errorMessage => _errorMessage;
+
+  QuotaConfig get globalQuota => repository.globalQuota;
+  Map<String, DeviceQuota> get deviceQuotas => repository.deviceQuotas;
+
+  double get quotaRatio {
+    if (!globalQuota.enabled || globalQuota.limitBytes <= 0) return 0.0;
+    return _snapshot.sessionTotalBytes / globalQuota.limitBytes;
+  }
+
+  double get quotaProgress => quotaRatio.clamp(0.0, 1.0);
+
+  QuotaStatus get quotaStatus {
+    if (!globalQuota.enabled) return QuotaStatus.disabled;
+    if (quotaRatio >= 1.0) return QuotaStatus.exceeded;
+    if (quotaRatio >= (globalQuota.warningPercent / 100.0)) {
+      return QuotaStatus.warning;
+    }
+    return QuotaStatus.normal;
+  }
 
   Future<void> initialize() async {
     _isInitializing = true;
@@ -136,6 +164,35 @@ class DashboardViewModel extends ChangeNotifier {
 
   Future<List<DeviceHistorySummary>> getAllDeviceHistory() =>
       repository.getAllDeviceHistory();
+
+  Future<void> updateGlobalQuota(QuotaConfig config) async {
+    await repository.setGlobalQuota(config);
+    notifyListeners();
+  }
+
+  Future<void> updateDeviceQuota(DeviceQuota quota) async {
+    await repository.setDeviceQuota(quota);
+    notifyListeners();
+  }
+
+  Future<void> removeDeviceQuota(String deviceId) async {
+    await repository.removeDeviceQuota(deviceId);
+    notifyListeners();
+  }
+
+  Future<bool> toggleDeviceBlock(
+    String ip, {
+    String? mac,
+    required bool blocked,
+  }) async {
+    final success = await repository.setDeviceBlocked(
+      ip: ip,
+      mac: mac,
+      blocked: blocked,
+    );
+    notifyListeners();
+    return success;
+  }
 
   Future<void> clearHistory() async {
     await repository.clearHistory();

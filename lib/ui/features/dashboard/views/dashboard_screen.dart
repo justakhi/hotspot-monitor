@@ -8,6 +8,7 @@ import '../../../../domain/models/service_usage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/quota_progress_card.dart';
 import '../../../core/widgets/usage_breakdown_bar.dart';
 import '../../device_detail/views/device_detail_screen.dart';
 import '../../history/views/connection_history_screen.dart';
@@ -90,6 +91,19 @@ class DashboardScreen extends StatelessWidget {
                       snapshot: snapshot,
                       connectedCount: connectedDevices.length,
                     ),
+                    const SizedBox(height: 12),
+                    QuotaProgressCard(viewModel: viewModel),
+                    if (viewModel.quotaStatus == QuotaStatus.exceeded) ...[
+                      const SizedBox(height: 12),
+                      FAlert(
+                        variant: FAlertVariant.destructive,
+                        icon: const Icon(FLucideIcons.triangleAlert),
+                        title: const Text('Hotspot Quota Exceeded'),
+                        subtitle: Text(
+                          'Session usage of ${Formatters.bytes(snapshot.sessionTotalBytes)} has exceeded the ${Formatters.bytes(viewModel.globalQuota.limitBytes)} budget.',
+                        ),
+                      ),
+                    ],
                     if (snapshot.isRootMode &&
                         snapshot.topServices.isNotEmpty) ...[
                       const SizedBox(height: 12),

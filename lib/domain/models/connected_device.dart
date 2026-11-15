@@ -21,6 +21,7 @@ class ConnectedDevice {
     required this.currentDownloadBps,
     required this.currentUploadBps,
     required this.services,
+    this.isBlocked = false,
   });
 
   factory ConnectedDevice.fromMap(
@@ -52,6 +53,7 @@ class ConnectedDevice {
       currentDownloadBps: (map['currentDownloadBps'] as num?)?.toInt() ?? 0,
       currentUploadBps: (map['currentUploadBps'] as num?)?.toInt() ?? 0,
       services: services,
+      isBlocked: map['isBlocked'] == true,
     );
   }
 
@@ -73,6 +75,7 @@ class ConnectedDevice {
   final int currentDownloadBps;
   final int currentUploadBps;
   final List<ServiceUsage> services;
+  final bool isBlocked;
 
   int get totalBytes => downloadBytes + uploadBytes;
   int get currentTotalBps => currentDownloadBps + currentUploadBps;
@@ -87,13 +90,16 @@ class ConnectedDevice {
     return ip;
   }
 
-  ConnectedDevice copyWith({String? customAlias}) {
+  ConnectedDevice copyWith({
+    String? customAlias,
+    bool? isBlocked,
+  }) {
     return ConnectedDevice(
       id: id,
       ip: ip,
       mac: mac,
       hostname: hostname,
-      customAlias: customAlias,
+      customAlias: customAlias ?? this.customAlias,
       vendor: vendor,
       isRandomizedMac: isRandomizedMac,
       neighborState: neighborState,
@@ -107,6 +113,7 @@ class ConnectedDevice {
       currentDownloadBps: currentDownloadBps,
       currentUploadBps: currentUploadBps,
       services: services,
+      isBlocked: isBlocked ?? this.isBlocked,
     );
   }
 }
