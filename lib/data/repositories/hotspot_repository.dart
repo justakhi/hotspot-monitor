@@ -10,6 +10,7 @@ import '../../domain/models/hotspot_snapshot.dart';
 import '../../domain/models/quota_config.dart';
 import '../../domain/models/service_usage.dart';
 import '../services/device_alias_service.dart';
+import '../services/export_service.dart';
 import '../services/history_store.dart';
 import '../services/hotspot_platform_service.dart';
 import '../services/quota_service.dart';
@@ -23,15 +24,18 @@ class HotspotRepository {
     QuotaService? quotaService,
     UpdateCheckerService? updateService,
     HistoryStore? historyStore,
+    ExportService? exportService,
   })  : quotaService = quotaService ?? QuotaService(),
         updateService = updateService ?? UpdateCheckerService(),
-        historyStore = historyStore ?? SqliteHistoryStore();
+        historyStore = historyStore ?? SqliteHistoryStore(),
+        exportService = exportService ?? const ExportService();
 
   final HotspotPlatformService platformService;
   final DeviceAliasService aliasService;
   final QuotaService quotaService;
   final UpdateCheckerService updateService;
   final HistoryStore historyStore;
+  final ExportService exportService;
 
   Map<String, String> _aliases = const {};
   QuotaConfig _globalQuota = QuotaConfig.defaults;
@@ -252,6 +256,91 @@ class HotspotRepository {
 
   Future<bool> isBackgroundServiceEnabled() =>
       platformService.isBackgroundServiceEnabled();
+
+  Future<bool> exportReport({
+    required UsageReport report,
+    required bool asJson,
+  }) async {
+    final caps = latest.capabilities;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final rangeTag = report.range.shortLabel.toLowerCase();
+    if (asJson) {
+      final content = exportService.exportReportJson(
+        report,
+        capabilities: caps,
+        generatedMs: nowMs,
+      );
+      return platformService.shareExport(
+        filename: 'hotspot_usage_report_${rangeTag}_$nowMs.json',
+        content: content,
+        title: 'Hotspot Usage Report (${report.range.title})',
+        mimeType: 'application/json',
+      );
+    } else {
+      final content = exportService.exportReportCsv(
+        report,
+        capabilities: caps,
+        generatedMs: nowMs,
+      );
+      return platformService.shareExport(
+        filename: 'hotspot_usage_report_${rangeTag}_$nowMs.csv',
+        content: content,
+        title: 'Hotspot Usage Report (${report.range.title})',
+        mimeType: 'text/csv',
+      );
+    }
+  }
+
+  Future<bool> exportConnectionLogs() async {
+    await _writeQueue;
+    final devices = await historyStore.queryAllDevices(aliases: _aliases);
+    final caps = latest.capabilities;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final content = exportService.exportConnectionLogsCsv(
+      devices,
+      capabilities: caps,
+      generatedMs: nowMs,
+    );
+    return platformService.shareExport(
+      filename: 'hotspot_device_logs_$nowMs.csv',
+      content: content,
+      title: 'Hotspot Device Connection Logs',
+      mimeType: 'text/csv',
+    );
+  }
+
+  Future<bool> exportDeviceHistory({
+    required String deviceId,
+    required HistoryRange range,
+  }) async {
+    await _writeQueue;
+    final summary =
+        await historyStore.queryDeviceSummary(deviceId, aliases: _aliases);
+    if (summary == null) return false;
+    final report = await historyStore.queryReport(
+      range: range,
+      aliases: _aliases,
+      deviceId: deviceId,
+    );
+    final caps = latest.capabilities;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final content = exportService.exportDeviceHistoryCsv(
+      summary,
+      report.services,
+      report.timeline,
+      capabilities: caps,
+      generatedMs: nowMs,
+    );
+    final safeName =
+        summary.displayName.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+    return platformService.shareExport(
+      filename:
+          'device_${safeName}_${range.shortLabel.toLowerCase()}_$nowMs.csv',
+      content: content,
+      title: '${summary.displayName} Usage Log',
+      mimeType: 'text/csv',
+    );
+  }
 
   void _enqueueRecord(HotspotSnapshot snap) {
     _writeQueue = _writeQueue

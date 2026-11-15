@@ -3,10 +3,13 @@ package com.justakhi.hotspot_monitor
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
+import android.telephony.TelephonyManager
 import java.io.File
 import java.net.Inet4Address
 import java.net.NetworkInterface
@@ -20,12 +23,21 @@ data class HotspotInterfaceInfo(
     val tetherType: String
 )
 
+data class UpstreamNetworkInfo(
+    val connected: Boolean,
+    val type: String, // "cellular", "wifi", "ethernet", "none"
+    val interfaceName: String?,
+    val carrierName: String?,
+    val details: String
+)
+
 data class CapabilitySnapshot(
     val usageAccessGranted: Boolean,
     val rootBinaryPresent: Boolean,
     val rootGranted: Boolean,
     val nativeProbeAvailable: Boolean,
-    val hotspot: HotspotInterfaceInfo
+    val hotspot: HotspotInterfaceInfo,
+    val upstream: UpstreamNetworkInfo
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "usageAccessGranted" to usageAccessGranted,
@@ -36,7 +48,12 @@ data class CapabilitySnapshot(
         "hotspotInterface" to hotspot.interfaceName,
         "gatewayIp" to hotspot.gatewayIp,
         "prefixLength" to hotspot.prefixLength,
-        "tetherType" to hotspot.tetherType
+        "tetherType" to hotspot.tetherType,
+        "upstreamConnected" to upstream.connected,
+        "upstreamType" to upstream.type,
+        "upstreamInterface" to upstream.interfaceName,
+        "upstreamCarrier" to upstream.carrierName,
+        "upstreamDetails" to upstream.details
     )
 }
 
@@ -232,6 +249,50 @@ class CapabilityChecker(private val context: Context) {
         return fastResult
     }
 
+    fun detectUpstreamNetwork(): UpstreamNetworkInfo {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return UpstreamNetworkInfo(false, "none", null, null, "No Network Service")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val activeNet = cm.activeNetwork
+                ?: return UpstreamNetworkInfo(false, "none", null, null, "No Internet Connection")
+            val caps = cm.getNetworkCapabilities(activeNet)
+                ?: return UpstreamNetworkInfo(false, "none", null, null, "No Capabilities")
+            val linkProps = cm.getLinkProperties(activeNet)
+            val ifaceName = linkProps?.interfaceName
+
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                return UpstreamNetworkInfo(
+                    connected = true,
+                    type = "wifi",
+                    interfaceName = ifaceName ?: "wlan0",
+                    carrierName = null,
+                    details = "Wi-Fi Network"
+                )
+            } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                val opName = tm?.networkOperatorName?.ifBlank { tm.simOperatorName }?.ifBlank { null }
+                val label = if (!opName.isNullOrBlank()) "$opName Mobile Data" else "Cellular Mobile Data"
+                return UpstreamNetworkInfo(
+                    connected = true,
+                    type = "cellular",
+                    interfaceName = ifaceName,
+                    carrierName = opName,
+                    details = label
+                )
+            } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                return UpstreamNetworkInfo(
+                    connected = true,
+                    type = "ethernet",
+                    interfaceName = ifaceName,
+                    carrierName = null,
+                    details = "Ethernet Connection"
+                )
+            }
+        }
+        return UpstreamNetworkInfo(false, "none", null, null, "No Internet Connection")
+    }
+
     fun snapshot(useRoot: Boolean = rootGrantedCached): CapabilitySnapshot {
         val probe = probeProbeBinary()
         return CapabilitySnapshot(
@@ -239,7 +300,8 @@ class CapabilityChecker(private val context: Context) {
             rootBinaryPresent = isRootBinaryPresent(),
             rootGranted = useRoot,
             nativeProbeAvailable = probe != null,
-            hotspot = detectHotspotInterface(useRoot)
+            hotspot = detectHotspotInterface(useRoot),
+            upstream = detectUpstreamNetwork()
         )
     }
 

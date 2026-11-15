@@ -13,6 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -259,6 +260,16 @@ class MainActivity : FlutterActivity() {
             }
             "isBackgroundServiceEnabled" -> {
                 result.success(HotspotMonitorService.isRunning)
+            }
+            "shareExport" -> {
+                val filename = call.argument<String>("filename") ?: "hotspot_export.csv"
+                val content = call.argument<String>("content") ?: ""
+                val title = call.argument<String>("title") ?: "Export Hotspot Data"
+                val mimeType = call.argument<String>("mimeType") ?: "text/csv"
+                workerExecutor.execute {
+                    val ok = shareExportFile(filename, content, mimeType, title)
+                    mainHandler.post { result.success(ok) }
+                }
             }
             else -> result.notImplemented()
         }
@@ -530,6 +541,43 @@ class MainActivity : FlutterActivity() {
             bps >= 1_000_000 -> "%.1f MB/s".format(bps / 1_000_000.0)
             bps >= 1_000 -> "%.0f KB/s".format(bps / 1_000.0)
             else -> "$bps B/s"
+        }
+    }
+
+    private fun shareExportFile(filename: String, content: String, mimeType: String, title: String): Boolean {
+        return try {
+            val dir = java.io.File(cacheDir, "exports").apply { mkdirs() }
+            val file = java.io.File(dir, filename)
+            file.writeText(content, Charsets.UTF_8)
+            val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = mimeType
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, title)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            val chooser = Intent.createChooser(shareIntent, title).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(chooser)
+            true
+        } catch (_: Exception) {
+            try {
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, content)
+                    putExtra(Intent.EXTRA_SUBJECT, title)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                val chooser = Intent.createChooser(sendIntent, title).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(chooser)
+                true
+            } catch (_: Exception) {
+                false
+            }
         }
     }
 }

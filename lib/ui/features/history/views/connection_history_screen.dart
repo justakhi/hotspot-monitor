@@ -68,6 +68,14 @@ class _ConnectionHistoryScreenState extends State<ConnectionHistoryScreen> {
         prefixes: [
           FHeaderAction.back(onPress: () => Navigator.of(context).pop()),
         ],
+        suffixes: [
+          if (_devices.isNotEmpty)
+            FHeaderAction(
+              semanticsLabel: 'Export logs',
+              icon: const Icon(FLucideIcons.share2),
+              onPress: () => widget.viewModel.exportConnectionLogs(),
+            ),
+        ],
       ),
       child: _loading && _devices.isEmpty
           ? const Center(child: FCircularProgress())

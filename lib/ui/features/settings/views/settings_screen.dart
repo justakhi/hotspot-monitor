@@ -221,6 +221,15 @@ class SettingsScreen extends StatelessWidget {
                     },
                   ),
                   FTile(
+                    prefix: const Icon(FLucideIcons.share2),
+                    title: const Text('Export Connection Logs'),
+                    subtitle: const Text(
+                      'Export device connection history and traffic logs as CSV',
+                    ),
+                    suffix: const Icon(FLucideIcons.chevronRight),
+                    onPress: () => viewModel.exportConnectionLogs(),
+                  ),
+                  FTile(
                     prefix: const Icon(FLucideIcons.rotateCcw),
                     title: const Text('Reset Session Counters'),
                     subtitle: const Text(

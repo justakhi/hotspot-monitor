@@ -24,6 +24,12 @@ abstract class HotspotPlatformService {
   Future<bool> requestIgnoreBatteryOptimization();
   Future<bool> setBackgroundServiceEnabled(bool enabled);
   Future<bool> isBackgroundServiceEnabled();
+  Future<bool> shareExport({
+    required String filename,
+    required String content,
+    required String title,
+    String mimeType = 'text/csv',
+  });
 }
 
 /// Platform channel implementation backed by `MainActivity.kt`.
@@ -151,6 +157,25 @@ class MethodChannelHotspotPlatformService implements HotspotPlatformService {
   @override
   Future<bool> isBackgroundServiceEnabled() async {
     final res = await _control.invokeMethod<bool>('isBackgroundServiceEnabled');
+    return res ?? false;
+  }
+
+  @override
+  Future<bool> shareExport({
+    required String filename,
+    required String content,
+    required String title,
+    String mimeType = 'text/csv',
+  }) async {
+    final res = await _control.invokeMethod<bool>(
+      'shareExport',
+      {
+        'filename': filename,
+        'content': content,
+        'title': title,
+        'mimeType': mimeType,
+      },
+    );
     return res ?? false;
   }
 }

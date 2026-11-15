@@ -1,4 +1,4 @@
-/// Describes the OS permissions, root availability, and active hotspot interface.
+/// Describes the OS permissions, root availability, and active hotspot and upstream network interface.
 class CapabilityState {
   const CapabilityState({
     required this.usageAccessGranted,
@@ -10,6 +10,11 @@ class CapabilityState {
     required this.gatewayIp,
     required this.prefixLength,
     required this.tetherType,
+    this.upstreamConnected = false,
+    this.upstreamType = 'none',
+    this.upstreamInterface,
+    this.upstreamCarrier,
+    this.upstreamDetails = 'No Internet Connection',
   });
 
   factory CapabilityState.fromMap(Map<Object?, Object?> map) {
@@ -23,6 +28,12 @@ class CapabilityState {
       gatewayIp: map['gatewayIp'] as String?,
       prefixLength: (map['prefixLength'] as num?)?.toInt() ?? 24,
       tetherType: (map['tetherType'] as String?) ?? 'none',
+      upstreamConnected: map['upstreamConnected'] == true,
+      upstreamType: (map['upstreamType'] as String?) ?? 'none',
+      upstreamInterface: map['upstreamInterface'] as String?,
+      upstreamCarrier: map['upstreamCarrier'] as String?,
+      upstreamDetails:
+          (map['upstreamDetails'] as String?) ?? 'No Internet Connection',
     );
   }
 
@@ -36,6 +47,11 @@ class CapabilityState {
     gatewayIp: null,
     prefixLength: 24,
     tetherType: 'none',
+    upstreamConnected: false,
+    upstreamType: 'none',
+    upstreamInterface: null,
+    upstreamCarrier: null,
+    upstreamDetails: 'No Internet Connection',
   );
 
   final bool usageAccessGranted;
@@ -47,4 +63,9 @@ class CapabilityState {
   final String? gatewayIp;
   final int prefixLength;
   final String tetherType;
+  final bool upstreamConnected;
+  final String upstreamType;
+  final String? upstreamInterface;
+  final String? upstreamCarrier;
+  final String upstreamDetails;
 }

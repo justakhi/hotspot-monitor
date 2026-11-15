@@ -105,6 +105,91 @@ class _ReportsScreenState extends State<ReportsScreen> {
         .toList(growable: false);
   }
 
+  Future<void> _showExportDialog(BuildContext context, UsageReport report) async {
+    final theme = context.theme;
+    await showAdaptiveDialog<void>(
+      context: context,
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: AppCard(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(FLucideIcons.share2, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Export Usage Report',
+                    style: theme.typography.display.sm.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Export detailed ${report.range.title.toLowerCase()} traffic breakdown, network interfaces, and connected devices.',
+                style: theme.typography.body.xs.copyWith(
+                  color: theme.colors.mutedForeground,
+                ),
+              ),
+              const SizedBox(height: 18),
+              FTileGroup(
+                children: [
+                  FTile(
+                    prefix: const Icon(FLucideIcons.fileSpreadsheet),
+                    title: const Text('Export as CSV'),
+                    subtitle: const Text(
+                      'Compatible with Excel, Sheets, and data tools',
+                    ),
+                    suffix: const Icon(FLucideIcons.chevronRight),
+                    onPress: () async {
+                      Navigator.of(dialogCtx).pop();
+                      await widget.viewModel.exportReport(
+                        report: report,
+                        asJson: false,
+                      );
+                    },
+                  ),
+                  FTile(
+                    prefix: const Icon(FLucideIcons.fileCode),
+                    title: const Text('Export as JSON'),
+                    subtitle: const Text(
+                      'Full structured telemetry payload with intervals',
+                    ),
+                    suffix: const Icon(FLucideIcons.chevronRight),
+                    onPress: () async {
+                      Navigator.of(dialogCtx).pop();
+                      await widget.viewModel.exportReport(
+                        report: report,
+                        asJson: true,
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FButton(
+                  variant: FButtonVariant.outline,
+                  size: FButtonSizeVariant.sm,
+                  mainAxisSize: MainAxisSize.min,
+                  onPress: () => Navigator.of(dialogCtx).pop(),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = context.theme;
@@ -122,6 +207,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
         title: const Text('Usage Reports'),
         prefixes: [
           FHeaderAction.back(onPress: () => Navigator.of(context).pop()),
+        ],
+        suffixes: [
+          FHeaderAction(
+            semanticsLabel: 'Export report',
+            icon: const Icon(FLucideIcons.share2),
+            onPress: () => _showExportDialog(context, report),
+          ),
         ],
       ),
       child: ListView(

@@ -177,6 +177,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             ],
             suffixes: [
               FHeaderAction(
+                semanticsLabel: 'Export device log',
+                icon: const Icon(FLucideIcons.share2),
+                onPress: () => widget.viewModel.exportDeviceHistory(
+                  deviceId: widget.deviceId,
+                  range: activeRange ?? HistoryRange.day,
+                ),
+              ),
+              FHeaderAction(
                 semanticsLabel: 'Rename device',
                 icon: const Icon(FLucideIcons.pencil),
                 onPress: () => _showRenameDialog(

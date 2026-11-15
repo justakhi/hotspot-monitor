@@ -265,6 +265,20 @@ class DashboardViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> exportReport({
+    required UsageReport report,
+    required bool asJson,
+  }) =>
+      repository.exportReport(report: report, asJson: asJson);
+
+  Future<bool> exportConnectionLogs() => repository.exportConnectionLogs();
+
+  Future<bool> exportDeviceHistory({
+    required String deviceId,
+    required HistoryRange range,
+  }) =>
+      repository.exportDeviceHistory(deviceId: deviceId, range: range);
+
   void _setBusy(bool value) {
     _isBusy = value;
     notifyListeners();

@@ -543,6 +543,40 @@ class _SessionOverviewCard extends StatelessWidget {
                   ),
                 ),
               ],
+              if (caps.upstreamDetails.isNotEmpty &&
+                  caps.upstreamDetails != 'No Internet Connection') ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colors.secondary,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        caps.upstreamType == 'wifi'
+                            ? FLucideIcons.wifi
+                            : FLucideIcons.signal,
+                        size: 11,
+                        color: theme.colors.mutedForeground,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        caps.upstreamDetails,
+                        style: theme.typography.body.xs2.copyWith(
+                          color: theme.colors.mutedForeground,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const Spacer(),
               FBadge(
                 variant: FBadgeVariant.outline,

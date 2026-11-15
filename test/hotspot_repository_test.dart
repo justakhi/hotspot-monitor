@@ -101,6 +101,21 @@ class FakeHotspotPlatformService implements HotspotPlatformService {
   @override
   Future<bool> isBackgroundServiceEnabled() async => false;
 
+  String? lastExportFilename;
+  String? lastExportContent;
+
+  @override
+  Future<bool> shareExport({
+    required String filename,
+    required String content,
+    required String title,
+    String mimeType = 'text/csv',
+  }) async {
+    lastExportFilename = filename;
+    lastExportContent = content;
+    return true;
+  }
+
   @override
   Future<CapabilityState> setRootModeEnabled(bool enabled) async {
     capabilities = CapabilityState(
@@ -374,6 +389,26 @@ void main() {
     expect(await repo.requestIgnoreBatteryOptimization(), true);
     expect(await repo.setBackgroundServiceEnabled(true), true);
     expect(await repo.isBackgroundServiceEnabled(), false);
+
+    final exportCsvOk = await repo.exportReport(
+      report: UsageReport.empty,
+      asJson: false,
+    );
+    expect(exportCsvOk, true);
+    expect(fakePlatform.lastExportFilename?.endsWith('.csv'), true);
+    expect(fakePlatform.lastExportContent?.contains('# Hotspot Monitor'), true);
+
+    final exportJsonOk = await repo.exportReport(
+      report: UsageReport.empty,
+      asJson: true,
+    );
+    expect(exportJsonOk, true);
+    expect(fakePlatform.lastExportFilename?.endsWith('.json'), true);
+    expect(fakePlatform.lastExportContent?.contains('"appName": "Hotspot Monitor"'), true);
+
+    final exportLogsOk = await repo.exportConnectionLogs();
+    expect(exportLogsOk, true);
+    expect(fakePlatform.lastExportFilename?.contains('device_logs'), true);
 
     repo.dispose();
     await fakePlatform.controller.close();
