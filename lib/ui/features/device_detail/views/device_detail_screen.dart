@@ -302,62 +302,97 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     required String? currentAlias,
     required String fallbackHint,
   }) async {
-    final controller = TextEditingController(text: currentAlias ?? '');
     final saved = await showFDialog<String>(
       context: context,
       builder: (ctx, style, animation) => FDialog(
         style: style,
         animation: animation,
-        builder: (dialogCtx, _) => Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Label Device',
-                style: dialogCtx.theme.typography.display.lg.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 12),
-              FTextField(
-                control: .managed(controller: controller),
-                autofocus: true,
-                label: const Text('Friendly name'),
-                hint: fallbackHint,
-                description: const Text('Leave empty to reset to default name.'),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  FButton(
-                    variant: FButtonVariant.outline,
-                    size: FButtonSizeVariant.sm,
-                    mainAxisSize: MainAxisSize.min,
-                    onPress: () => Navigator.of(dialogCtx).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 8),
-                  FButton(
-                    size: FButtonSizeVariant.sm,
-                    mainAxisSize: MainAxisSize.min,
-                    onPress: () =>
-                        Navigator.of(dialogCtx).pop(controller.text),
-                    child: const Text('Save'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        builder: (dialogCtx, _) => _RenameDialogContent(
+          currentAlias: currentAlias,
+          fallbackHint: fallbackHint,
         ),
       ),
     );
-    controller.dispose();
     if (saved != null) {
       await widget.viewModel.renameDevice(deviceId, saved);
     }
+  }
+}
+
+class _RenameDialogContent extends StatefulWidget {
+  const _RenameDialogContent({
+    required this.currentAlias,
+    required this.fallbackHint,
+  });
+
+  final String? currentAlias;
+  final String fallbackHint;
+
+  @override
+  State<_RenameDialogContent> createState() => _RenameDialogContentState();
+}
+
+class _RenameDialogContentState extends State<_RenameDialogContent> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.currentAlias ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Label Device',
+            style: theme.typography.display.lg.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          FTextField(
+            control: .managed(controller: _controller),
+            autofocus: true,
+            label: const Text('Friendly name'),
+            hint: widget.fallbackHint,
+            description: const Text('Leave empty to reset to default name.'),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              FButton(
+                variant: FButtonVariant.outline,
+                size: FButtonSizeVariant.sm,
+                mainAxisSize: MainAxisSize.min,
+                onPress: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 8),
+              FButton(
+                size: FButtonSizeVariant.sm,
+                mainAxisSize: MainAxisSize.min,
+                onPress: () => Navigator.of(context).pop(_controller.text),
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -74,6 +74,10 @@ void main() {
     );
 
     expect(csv.contains('# Hotspot Monitor - Traffic & Usage Report'), isTrue);
+    expect(csv.contains('# Application: Hotspot Monitor'), isTrue);
+    expect(csv.contains('# GitHub: https://github.com/justakhi/hotspot-monitor'), isTrue);
+    expect(csv.contains('# Created By: Akshay Kumar (@justakhi)'), isTrue);
+    expect(csv.contains('# Export Time:'), isTrue);
     expect(csv.contains('Upstream Network: Jio 5G Mobile Data'), isTrue);
     expect(csv.contains('Hotspot Interface: wlan1'), isTrue);
     expect(csv.contains('My Work Laptop'), isTrue);
@@ -92,6 +96,9 @@ void main() {
 
     final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
     expect(decoded['metadata']['appName'], 'Hotspot Monitor');
+    expect(decoded['metadata']['appAuthor'], 'Akshay Kumar (@justakhi)');
+    expect(decoded['metadata']['githubUrl'], 'https://github.com/justakhi/hotspot-monitor');
+    expect(decoded['metadata']['generatedAtMs'], 1700005000000);
     expect(decoded['network']['upstreamDetails'], 'Jio 5G Mobile Data');
     expect(decoded['network']['hotspotInterface'], 'wlan1');
     expect(decoded['totals']['downloadBytes'], 104857600);

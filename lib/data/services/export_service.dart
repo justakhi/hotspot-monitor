@@ -10,6 +10,10 @@ import '../../ui/core/utils/formatters.dart';
 class ExportService {
   const ExportService();
 
+  static const String appName = 'Hotspot Monitor';
+  static const String appAuthor = 'Akshay Kumar (@justakhi)';
+  static const String githubUrl = 'https://github.com/justakhi/hotspot-monitor';
+
   /// Exports a full usage report as CSV with metadata, device tables, and service breakdowns.
   String exportReportCsv(
     UsageReport report, {
@@ -22,7 +26,10 @@ class ExportService {
 
     // 1. Report Metadata
     buffer.writeln('# Hotspot Monitor - Traffic & Usage Report');
-    buffer.writeln('# Generated At: $generatedAt');
+    buffer.writeln('# Application: $appName');
+    buffer.writeln('# GitHub: $githubUrl');
+    buffer.writeln('# Created By: $appAuthor');
+    buffer.writeln('# Export Time: $generatedAt (epoch: $nowMs)');
     buffer.writeln('# Period: ${report.range.title} (${report.range.shortLabel})');
     buffer.writeln('# Upstream Network: ${_csvCell(capabilities.upstreamDetails)}');
     buffer.writeln('# Upstream Interface: ${_csvCell(capabilities.upstreamInterface ?? "none")}');
@@ -111,7 +118,9 @@ class ExportService {
     final nowMs = generatedMs ?? DateTime.now().millisecondsSinceEpoch;
     final payload = {
       'metadata': {
-        'appName': 'Hotspot Monitor',
+        'appName': appName,
+        'appAuthor': appAuthor,
+        'githubUrl': githubUrl,
         'generatedAtMs': nowMs,
         'generatedAt': DateTime.fromMillisecondsSinceEpoch(nowMs).toIso8601String(),
         'range': report.range.shortLabel,
@@ -187,7 +196,10 @@ class ExportService {
     final buffer = StringBuffer();
 
     buffer.writeln('# Hotspot Monitor - Device Connection History & Logs');
-    buffer.writeln('# Generated At: $generatedAt');
+    buffer.writeln('# Application: $appName');
+    buffer.writeln('# GitHub: $githubUrl');
+    buffer.writeln('# Created By: $appAuthor');
+    buffer.writeln('# Export Time: $generatedAt (epoch: $nowMs)');
     buffer.writeln('# Upstream Network: ${_csvCell(capabilities.upstreamDetails)}');
     buffer.writeln('# Hotspot Interface: ${_csvCell(capabilities.hotspotInterface ?? "unknown")}');
     buffer.writeln('# Total Devices Recorded: ${devices.length}');
@@ -232,6 +244,10 @@ class ExportService {
     final buffer = StringBuffer();
 
     buffer.writeln('# Hotspot Monitor - Single Device Usage Log');
+    buffer.writeln('# Application: $appName');
+    buffer.writeln('# GitHub: $githubUrl');
+    buffer.writeln('# Created By: $appAuthor');
+    buffer.writeln('# Export Time: $generatedAt (epoch: $nowMs)');
     buffer.writeln('# Device: ${_csvCell(device.displayName)} (${device.ip})');
     buffer.writeln('# MAC: ${_csvCell(device.mac ?? "N/A")} · Vendor: ${_csvCell(device.vendor)}');
     buffer.writeln('# Upstream Network: ${_csvCell(capabilities.upstreamDetails)}');
@@ -239,7 +255,6 @@ class ExportService {
     buffer.writeln('# First Seen: ${_csvCell(Formatters.fullDateTime(device.firstSeenMs))}');
     buffer.writeln('# Last Seen: ${_csvCell(Formatters.fullDateTime(device.lastSeenMs))}');
     buffer.writeln('# Total Data: ${Formatters.bytes(device.totalBytes)} (↓ ${Formatters.bytes(device.downloadBytes)}, ↑ ${Formatters.bytes(device.uploadBytes)})');
-    buffer.writeln('# Generated At: $generatedAt');
     buffer.writeln();
 
     buffer.writeln('--- APP & SERVICE TRAFFIC ---');
