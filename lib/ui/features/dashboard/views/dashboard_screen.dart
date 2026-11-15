@@ -8,6 +8,7 @@ import '../../../../domain/models/service_usage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_skeleton.dart';
 import '../../../core/widgets/quota_progress_card.dart';
 import '../../../core/widgets/update_available_dialog.dart';
 import '../../../core/widgets/usage_breakdown_bar.dart';
@@ -104,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           child: viewModel.isInitializing
-              ? const Center(child: FCircularProgress())
+              ? const DashboardSkeletonView()
               : ListView(
                   physics: const ClampingScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
