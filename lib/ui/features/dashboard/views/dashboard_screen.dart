@@ -344,6 +344,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         continue;
       }
       if (h.lastSeenMs <= 0 || (nowMs - h.lastSeenMs) > oneHourMs) continue;
+      // Skip zero-traffic probed phantom devices without MAC or hostname
+      if (h.totalBytes <= 0 && h.mac == null && (h.hostname == null || h.hostname!.isEmpty)) {
+        continue;
+      }
       map[h.deviceId] = _RecentDisconnectedItem(
         id: h.deviceId,
         displayName: h.displayName,

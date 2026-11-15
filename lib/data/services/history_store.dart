@@ -166,6 +166,18 @@ class SqliteHistoryStore implements HistoryStore {
           );
         }
       },
+      onOpen: (db) async {
+        // Purge legacy phantom probed devices that have no MAC, no hostname, and 0 bytes transferred
+        await db.execute('''
+          DELETE FROM devices
+          WHERE mac IS NULL
+            AND (hostname IS NULL OR hostname = '')
+            AND device_id != '_hotspot_total_'
+            AND device_id NOT IN (
+              SELECT DISTINCT device_id FROM usage_buckets WHERE download_bytes > 0 OR upload_bytes > 0
+            )
+        ''');
+      },
     );
   }
 
@@ -186,6 +198,11 @@ class SqliteHistoryStore implements HistoryStore {
     await db.transaction((txn) async {
       for (final d in devices) {
         if (!d.isOnline && d.lastSeenMs <= 0 && d.totalBytes <= 0) {
+          continue;
+        }
+        if (d.id == '_hotspot_total_') continue;
+        // Never persist transient probe targets with no MAC, no hostname, and 0 bytes
+        if (d.mac == null && (d.hostname == null || d.hostname!.isEmpty) && d.totalBytes <= 0) {
           continue;
         }
         final effectiveLastSeen = d.isOnline
@@ -560,6 +577,7 @@ class SqliteHistoryStore implements HistoryStore {
       LEFT JOIN usage_buckets u ON u.device_id = d.device_id
       WHERE d.device_id != '_hotspot_total_'
       GROUP BY d.device_id
+      HAVING (rx > 0 OR tx > 0 OR d.mac IS NOT NULL OR (d.hostname IS NOT NULL AND d.hostname != ''))
       ORDER BY d.last_seen_ms DESC
       ''',
     );
@@ -672,6 +690,10 @@ class InMemoryHistoryStore implements HistoryStore {
       DateTime.fromMillisecondsSinceEpoch(timestampMs),
     );
     for (final d in devices) {
+      if (d.id == '_hotspot_total_') continue;
+      if (d.mac == null && (d.hostname == null || d.hostname!.isEmpty) && d.totalBytes <= 0) {
+        continue;
+      }
       final prev = _devices[d.id];
       final effectiveLastSeen = d.isOnline
           ? timestampMs

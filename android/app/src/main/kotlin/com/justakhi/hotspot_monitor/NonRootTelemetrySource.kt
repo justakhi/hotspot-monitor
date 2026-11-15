@@ -13,6 +13,7 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.PortUnreachableException
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -152,11 +153,21 @@ class NonRootTelemetrySource(private val context: Context) {
         val hostBits = 32 - clampedPrefix
         val hostCount = (1 shl hostBits) - 2
         val networkInt = gwInt and (-1 shl hostBits)
+        val routerInt = networkInt or 1 // .1 is upstream router/gateway on shared subnets
+
+        val offsets = buildList {
+            // Prioritize typical Android SoftAP DHCP leases first
+            for (o in 100..150) add(o)
+            for (o in 2..60) add(o)
+            for (o in 1..hostCount.coerceAtMost(254)) {
+                if (o !in 100..150 && o !in 2..60) add(o)
+            }
+        }.distinct()
 
         val candidateIps = mutableListOf<String>()
-        for (offset in 1..hostCount.coerceAtMost(254)) {
+        for (offset in offsets) {
             val ipInt = networkInt or offset
-            if (ipInt == gwInt) continue
+            if (ipInt == gwInt || ipInt == routerInt) continue
             val ip = "${(ipInt ushr 24) and 0xFF}.${(ipInt ushr 16) and 0xFF}.${(ipInt ushr 8) and 0xFF}.${ipInt and 0xFF}"
             candidateIps.add(ip)
         }
@@ -182,28 +193,61 @@ class NonRootTelemetrySource(private val context: Context) {
         var alive = false
         var method = "subnet_probe"
 
-        try {
-            val addr = InetAddress.getByName(ip)
-            if (addr.isReachable(180)) {
-                alive = true
-                method = "icmp_echo"
-            }
-        } catch (_: Exception) {
+        // 1. If already discovered via mDNS
+        if (mdnsHostNames.containsKey(ip)) {
+            alive = true
+            method = "mdns"
         }
 
+        // 2. Fast ICMP reachability check
         if (!alive) {
-            val probePorts = intArrayOf(62078, 80, 443, 8008, 5555, 5353)
+            try {
+                val addr = InetAddress.getByName(ip)
+                if (addr.isReachable(150)) {
+                    alive = true
+                    method = "icmp_echo"
+                }
+            } catch (_: Exception) {
+            }
+        }
+
+        // 3. Connected UDP probe (RFC 792 ICMP Port Unreachable test)
+        // A live peer with no service on high UDP port replies with ICMP Port Unreachable.
+        // On a connected DatagramSocket, Java surfaces this as PortUnreachableException.
+        // A dead host never replies with ICMP Port Unreachable.
+        if (!alive) {
+            var udpSocket: DatagramSocket? = null
+            try {
+                udpSocket = DatagramSocket()
+                udpSocket.soTimeout = 120
+                udpSocket.connect(InetAddress.getByName(ip), 37424)
+                udpSocket.send(DatagramPacket(byteArrayOf(0x00), 1))
+                val buf = ByteArray(64)
+                udpSocket.receive(DatagramPacket(buf, buf.size))
+                alive = true
+                method = "udp_echo"
+            } catch (_: PortUnreachableException) {
+                alive = true
+                method = "icmp_port_unreach"
+            } catch (_: Exception) {
+            } finally {
+                try {
+                    udpSocket?.close()
+                } catch (_: Exception) {
+                }
+            }
+        }
+
+        // 4. TCP handshake probe across well-known listening ports
+        // Only mark alive if socket.connect() completely succeeds without throwing.
+        if (!alive) {
+            val probePorts = intArrayOf(80, 443, 8080, 8008, 5555, 62078)
             for (port in probePorts) {
                 val socket = Socket()
                 try {
-                    socket.connect(InetSocketAddress(ip, port), 130)
+                    socket.connect(InetSocketAddress(ip, port), 120)
                     alive = true
                     method = "tcp_$port"
-                    break
-                } catch (_: ConnectException) {
-                    // Connection refused proves the peer's TCP/IP stack actively responded.
-                    alive = true
-                    method = "tcp_rst"
                     break
                 } catch (_: Exception) {
                 } finally {
@@ -215,19 +259,21 @@ class NonRootTelemetrySource(private val context: Context) {
             }
         }
 
-        if (!alive && !mdnsHostNames.containsKey(ip)) {
-            return null
-        }
-
+        // 5. Hostname resolution (NetBIOS, LLMNR, SSDP, Reverse DNS)
         var hostname = mdnsHostNames[ip] ?: resolvedHostNames[ip]
         if (hostname.isNullOrBlank()) {
             hostname = resolveBestHostname(ip)
             if (!hostname.isNullOrBlank()) {
                 resolvedHostNames[ip] = hostname
+                alive = true
+                if (method == "subnet_probe") {
+                    method = "hostname_resolved"
+                }
             }
         }
-        if (mdnsHostNames.containsKey(ip)) {
-            method = "mdns"
+
+        if (!alive) {
+            return null
         }
 
         return DiscoveredHost(ip = ip, hostname = hostname, discoveryMethod = method)
