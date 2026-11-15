@@ -87,6 +87,9 @@ class ConnectedDevice {
     if (hostname != null && hostname!.trim().isNotEmpty) {
       return hostname!.trim();
     }
+    if (vendor.isNotEmpty && vendor != 'Unknown' && vendor != 'Connected Client') {
+      return vendor;
+    }
     return ip;
   }
 

@@ -190,7 +190,8 @@ class MainActivity : FlutterActivity() {
                     if (!rootModeEnabled && snap.hotspot.active && !snap.hotspot.gatewayIp.isNullOrBlank()) {
                         lastNonRootDevices = nonRootSource.scanSubnetDevices(
                             snap.hotspot.gatewayIp,
-                            snap.hotspot.prefixLength
+                            snap.hotspot.prefixLength,
+                            snap.hotspot.interfaceName
                         )
                         lastSubnetScanMs = System.currentTimeMillis()
                     }
@@ -295,7 +296,8 @@ class MainActivity : FlutterActivity() {
                                 try {
                                     val scanned = nonRootSource.scanSubnetDevices(
                                         snap.hotspot.gatewayIp,
-                                        snap.hotspot.prefixLength
+                                        snap.hotspot.prefixLength,
+                                        snap.hotspot.interfaceName
                                     )
                                     lastNonRootDevices = scanned
                                     lastSubnetScanMs = System.currentTimeMillis()
@@ -418,13 +420,25 @@ class MainActivity : FlutterActivity() {
             lastTickMs = now
 
             devicesPayload = lastNonRootDevices.map { host ->
+                val vInfo = if (!host.mac.isNullOrBlank()) {
+                    OuiVendorLookup.lookup(host.mac)
+                } else null
+                val vendor = when {
+                    vInfo != null -> vInfo.vendor
+                    host.discoveryMethod.contains("Windows", ignoreCase = true) -> "Microsoft Windows Device"
+                    host.discoveryMethod.contains("Apple", ignoreCase = true) -> "Apple Device"
+                    host.discoveryMethod.contains("Cast", ignoreCase = true) -> "Google Cast Device"
+                    host.discoveryMethod.contains("Android", ignoreCase = true) -> "Android Device"
+                    host.discoveryMethod.contains("Linux", ignoreCase = true) -> "Linux Device"
+                    else -> "Connected Client"
+                }
                 mapOf(
-                    "id" to host.ip,
+                    "id" to (host.mac ?: host.ip),
                     "ip" to host.ip,
-                    "mac" to null,
+                    "mac" to host.mac,
                     "hostname" to host.hostname,
-                    "vendor" to "Root required for MAC/Vendor",
-                    "isRandomizedMac" to false,
+                    "vendor" to vendor,
+                    "isRandomizedMac" to (vInfo?.isRandomized ?: false),
                     "neighborState" to host.discoveryMethod.uppercase(),
                     "rssiDbm" to null,
                     "txBitrateMbps" to null,

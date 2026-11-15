@@ -469,115 +469,125 @@ class _SessionOverviewCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              FTappable(
-                onPress: onToggleHotspot,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: active
-                        ? AppTheme.rootAccent.withValues(alpha: 0.12)
-                        : theme.colors.secondary,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: active
-                          ? AppTheme.rootAccent.withValues(alpha: 0.35)
-                          : theme.colors.border,
-                    ),
-                  ),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: active
-                              ? AppTheme.rootAccent
-                              : theme.colors.mutedForeground,
+                      FTappable(
+                        onPress: onToggleHotspot,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? AppTheme.rootAccent.withValues(alpha: 0.12)
+                                : theme.colors.secondary,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: active
+                                  ? AppTheme.rootAccent.withValues(alpha: 0.35)
+                                  : theme.colors.border,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: active
+                                      ? AppTheme.rootAccent
+                                      : theme.colors.mutedForeground,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                active ? 'Hotspot On' : 'Hotspot Off',
+                                style: theme.typography.body.xs.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: active
+                                      ? AppTheme.rootAccent
+                                      : theme.colors.foreground,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                FLucideIcons.externalLink,
+                                size: 11,
+                                color: active
+                                    ? AppTheme.rootAccent
+                                    : theme.colors.mutedForeground,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        active ? 'Hotspot On' : 'Hotspot Off',
-                        style: theme.typography.body.xs.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: active
-                              ? AppTheme.rootAccent
-                              : theme.colors.foreground,
+                      if (caps.hotspotInterface != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colors.secondary,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            caps.hotspotInterface!,
+                            style: theme.typography.body.xs2.copyWith(
+                              color: theme.colors.mutedForeground,
+                              fontWeight: FontWeight.w600,
+                              fontFeatures: tabular,
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        FLucideIcons.externalLink,
-                        size: 11,
-                        color: active
-                            ? AppTheme.rootAccent
-                            : theme.colors.mutedForeground,
-                      ),
+                      ],
+                      if (caps.upstreamDetails.isNotEmpty &&
+                          caps.upstreamDetails != 'No Internet Connection') ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colors.secondary,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                caps.upstreamType == 'wifi'
+                                    ? FLucideIcons.wifi
+                                    : FLucideIcons.signal,
+                                size: 11,
+                                color: theme.colors.mutedForeground,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                caps.upstreamDetails,
+                                style: theme.typography.body.xs2.copyWith(
+                                  color: theme.colors.mutedForeground,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
-              if (caps.hotspotInterface != null) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colors.secondary,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    caps.hotspotInterface!,
-                    style: theme.typography.body.xs2.copyWith(
-                      color: theme.colors.mutedForeground,
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: tabular,
-                    ),
-                  ),
-                ),
-              ],
-              if (caps.upstreamDetails.isNotEmpty &&
-                  caps.upstreamDetails != 'No Internet Connection') ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colors.secondary,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        caps.upstreamType == 'wifi'
-                            ? FLucideIcons.wifi
-                            : FLucideIcons.signal,
-                        size: 11,
-                        color: theme.colors.mutedForeground,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        caps.upstreamDetails,
-                        style: theme.typography.body.xs2.copyWith(
-                          color: theme.colors.mutedForeground,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              const Spacer(),
+              const SizedBox(width: 8),
               FBadge(
                 variant: FBadgeVariant.outline,
                 child: Text(
@@ -1119,7 +1129,11 @@ class _DeviceCard extends StatelessWidget {
         ? (hasCustomOrHost
               ? '${device.ip} · ${device.vendor}${device.mac != null ? ' · ${device.mac}' : ''}'
               : '${device.vendor}${device.mac != null ? ' · ${device.mac}' : ''}')
-        : device.ip;
+        : (hasCustomOrHost
+              ? '${device.ip} · Non-Root'
+              : (device.vendor.isNotEmpty && device.vendor != 'Unknown' && device.vendor != 'Connected Client'
+                  ? '${device.ip} · ${device.vendor}'
+                  : '${device.ip} · Non-Root'));
 
     return AppCard(
       onPress: onTap,
