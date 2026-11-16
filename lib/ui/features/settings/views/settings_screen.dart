@@ -381,7 +381,7 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   FTile(
                     prefix: const Icon(FLucideIcons.scale),
-                    title: const Text('Hotspot Monitor v1.0.0'),
+                    title: Text('Hotspot Monitor v${UpdateCheckerService.currentVersion}'),
                     subtitle: const Text(
                       'PolyForm Noncommercial 1.0.0 · Free for personal use',
                     ),

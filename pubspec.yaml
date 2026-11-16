@@ -1,7 +1,7 @@
 name: hotspot_monitor
 description: "Free, read-only Android hotspot device, traffic, and domain monitor with passive root telemetry."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.13.7

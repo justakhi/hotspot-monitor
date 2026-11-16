@@ -5,7 +5,7 @@ import '../../domain/models/app_release_info.dart';
 
 /// Checks GitHub Releases API for app updates and parses release changelogs.
 class UpdateCheckerService {
-  static const String currentVersion = '1.0.0';
+  static const String currentVersion = '1.0.1';
   static const String _latestReleaseApiUrl =
       'https://api.github.com/repos/justakhi/hotspot-monitor/releases/latest';
 

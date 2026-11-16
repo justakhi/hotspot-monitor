@@ -5,14 +5,22 @@ All notable changes to Hotspot Monitor are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - Unreleased
+## [1.0.1] - 2026-11-16
 
 ### Added
-- **Hotspot data quota and alerts**: Set session data budgets (500 MB, 1 GB, 2 GB, 5 GB, or custom) with proactive warning states at 80% and overage alerts. Works in both root and non-root modes.
-- **Per-device internet access control (root mode)**: Drop or allow client device internet traffic in memory via standard Linux `iptables` rules in RAM without writing to system partitions or altering phone connectivity.
-- **Per-device data limits (root mode)**: Set individual byte quotas for specific connected devices with optional auto-blocking when their limit is reached.
-- **In-app update checker**: Checks GitHub Releases on startup and in settings. Displays a popup with release notes and a direct download link when a new version is published.
-- **Changelog tracking**: Structured changelog published alongside every release build.
+- **Native dark splash screen**: Android 12+ SplashScreen API integration with deep slate `#090A0E` background and centered app icon, eliminating the blank white startup screen.
+- **Pulsing skeleton loader**: Startup placeholder cards that mirror the dashboard layout, replacing the circular spinner.
+- **Fast non-root host detection**: High-speed multi-OS TCP handshake probes (Windows WUDO port 7680, Apple Continuity 62078, Cast 8008, ADB 5555, Web 80/443). Probes /24 hotspot subnets in ~350ms and identifies connected Windows machines even under Public network profile.
+- **Automatic OS fingerprinting**: Infers and displays client vendor (`Microsoft Windows Device`, `Apple Device`, `Android Device`) when MAC address is hidden by Android 14 SELinux restrictions.
+- **Usage & log data export**: Export hotspot traffic, upstream network info, and connection logs to standard CSV and JSON with ISO 8601 timestamps, developer credits, and GitHub project link.
+- **Quick hotspot toggle**: One-tap toggle and settings launcher for mobile hotspot on both root and non-root setups.
+- **Background foreground service**: Persistent background monitor notification with battery optimization whitelist support.
+- **Session quota controls**: Set session bandwidth limits with proactive 80% warning and overage indicators.
+- **Per-device access controls (root mode)**: In-memory `iptables` internet blocking and individual client data limits.
+
+### Fixed
+- **Device rename dialog crash**: Fixed `failed assertion line 6281 pos 12: true` when canceling the rename dialog by scoping controller lifecycle within the stateful dialog widget.
+- **Non-root 0 connected devices bug**: Resolved issue where Android 11+ SELinux blocked `/proc/net/arp` and `ip neigh` by using active TCP port scanning.
 
 ---
 
