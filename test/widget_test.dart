@@ -4,6 +4,7 @@ import 'package:hotspot_monitor/data/repositories/hotspot_repository.dart';
 import 'package:hotspot_monitor/data/services/device_alias_service.dart';
 import 'package:hotspot_monitor/data/services/history_store.dart';
 import 'package:hotspot_monitor/main.dart';
+import 'package:hotspot_monitor/ui/features/settings/views/settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'hotspot_repository_test.dart';
@@ -45,17 +46,21 @@ void main() {
 
       expect(find.text('Menu & Settings'), findsOneWidget);
       expect(find.text('Root Access'), findsOneWidget);
+      final settingsScrollable = find.descendant(
+        of: find.byType(SettingsScreen),
+        matching: find.byType(Scrollable),
+      ).first;
       await tester.scrollUntilVisible(
         find.text('Clear Saved History'),
         300,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: settingsScrollable,
       );
       await tester.pumpAndSettle();
       expect(find.text('Clear Saved History'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('AP Labs'),
         300,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: settingsScrollable,
       );
       await tester.pumpAndSettle();
       expect(find.text('AP Labs'), findsOneWidget);

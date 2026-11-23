@@ -38,6 +38,11 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Google Mobile Ads App ID (official Google sample ID for development; replace with real ID for production) -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
+
         <service
             android:name=".HotspotMonitorService"
             android:exported="false"

@@ -11,6 +11,8 @@ import '../../../../data/services/update_checker_service.dart';
 import '../../dashboard/view_models/dashboard_view_model.dart';
 import '../../history/views/connection_history_screen.dart';
 import '../../reports/views/reports_screen.dart';
+import '../widgets/faq_dialog.dart';
+import '../widgets/privacy_policy_dialog.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.viewModel});
@@ -35,8 +37,103 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
           child: ListView(
+            key: const Key('settings_list_view'),
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
             children: [
+              _SectionTitle(title: 'Pro & Licensing'),
+              const SizedBox(height: 8),
+              AppCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          viewModel.isPro
+                              ? FLucideIcons.award
+                              : FLucideIcons.sparkles,
+                          color: viewModel.isPro
+                              ? Colors.amber
+                              : theme.colors.primary,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                viewModel.isPro
+                                    ? 'Hotspot Monitor Pro Active'
+                                    : 'Hotspot Monitor Pro',
+                                style: theme.typography.display.sm.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: theme.colors.foreground,
+                                ),
+                              ),
+                              Text(
+                                viewModel.isPro
+                                    ? 'Lifetime ad-free license active'
+                                    : 'Remove all ads & support development',
+                                style: theme.typography.body.xs.copyWith(
+                                  color: theme.colors.mutedForeground,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (viewModel.isPro)
+                          FBadge(child: const Text('PRO')),
+                      ],
+                    ),
+                    if (!viewModel.isPro) ...[
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FButton(
+                              onPress: () async {
+                                final ok = await viewModel.buyPro();
+                                if (!ok && context.mounted) {
+                                  showFToast(
+                                    context: context,
+                                    icon: const Icon(FLucideIcons.info),
+                                    title: const Text('Store Notice'),
+                                    description: const Text(
+                                      'Connecting to Google Play Billing...',
+                                    ),
+                                  );
+                                }
+                              },
+                              child: const Text('Remove Ads'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FButton(
+                            variant: FButtonVariant.outline,
+                            onPress: () async {
+                              await viewModel.restorePurchases();
+                              if (context.mounted) {
+                                showFToast(
+                                  context: context,
+                                  icon: const Icon(FLucideIcons.check),
+                                  title: const Text('Restore Purchases'),
+                                  description: const Text(
+                                    'Querying Google Play account for prior purchases.',
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Text('Restore'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
               _SectionTitle(title: 'Mode & Permissions'),
               const SizedBox(height: 8),
               FTileGroup(
@@ -295,6 +392,40 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 20),
+              _SectionTitle(title: 'Help & Support'),
+              const SizedBox(height: 8),
+              FTileGroup(
+                children: [
+                  FTile(
+                    prefix: const Icon(FLucideIcons.circleHelp),
+                    title: const Text('Frequently Asked Questions'),
+                    subtitle: const Text(
+                      'Root vs non-root, randomized MACs & quotas',
+                    ),
+                    suffix: const Icon(FLucideIcons.chevronRight),
+                    onPress: () => FaqDialog.show(context),
+                  ),
+                  FTile(
+                    prefix: const Icon(FLucideIcons.star),
+                    title: const Text('Rate on Google Play'),
+                    subtitle: const Text('Help us improve with a review'),
+                    suffix: const Icon(FLucideIcons.externalLink),
+                    onPress: () => viewModel.openUrl(
+                      'market://details?id=com.aplabs.hotspotmonitor',
+                    ),
+                  ),
+                  FTile(
+                    prefix: const Icon(FLucideIcons.shieldCheck),
+                    title: const Text('Privacy Policy'),
+                    subtitle: const Text(
+                      'Offline data & zero telemetry commitment',
+                    ),
+                    suffix: const Icon(FLucideIcons.chevronRight),
+                    onPress: () => PrivacyPolicyDialog.show(context),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
               _SectionTitle(title: 'About'),

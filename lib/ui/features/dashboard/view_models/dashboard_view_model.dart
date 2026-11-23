@@ -45,6 +45,7 @@ class DashboardViewModel extends ChangeNotifier {
   bool get isBatteryOptimizationIgnored => _isBatteryOptimizationIgnored;
   bool get isNotificationPermissionGranted => _isNotificationPermissionGranted;
   bool get shouldShowOnboarding => _shouldShowOnboarding;
+  bool get isPro => repository.isPro;
 
   QuotaConfig get globalQuota => repository.globalQuota;
   Map<String, DeviceQuota> get deviceQuotas => repository.deviceQuotas;
@@ -275,6 +276,17 @@ class DashboardViewModel extends ChangeNotifier {
   Future<void> completeOnboarding() async {
     _shouldShowOnboarding = false;
     await repository.setOnboardingCompleted();
+    notifyListeners();
+  }
+
+  Future<bool> buyPro() async {
+    final ok = await repository.buyPro();
+    notifyListeners();
+    return ok;
+  }
+
+  Future<void> restorePurchases() async {
+    await repository.restorePurchases();
     notifyListeners();
   }
 

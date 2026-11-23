@@ -7,6 +7,7 @@ import '../../../../domain/models/hotspot_snapshot.dart';
 import '../../../../domain/models/service_usage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/ad_banner_widget.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_skeleton.dart';
 import '../../../core/widgets/quota_progress_card.dart';
@@ -124,9 +125,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          child: viewModel.isInitializing
-              ? const DashboardSkeletonView()
-              : ListView(
+          child: Column(
+            children: [
+              Expanded(
+                child: viewModel.isInitializing
+                    ? const DashboardSkeletonView()
+                    : ListView(
                   physics: const ClampingScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                   children: [
@@ -336,6 +340,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ],
                 ),
+              ),
+              if (!viewModel.isPro)
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: AdBannerWidget(isPro: viewModel.isPro),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );

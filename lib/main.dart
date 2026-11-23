@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 
 import 'data/repositories/hotspot_repository.dart';
+import 'data/services/ad_service.dart';
 import 'data/services/device_alias_service.dart';
 import 'data/services/history_store.dart';
 import 'data/services/hotspot_platform_service.dart';
@@ -12,8 +13,9 @@ import 'ui/core/theme/app_theme.dart';
 import 'ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'ui/features/dashboard/views/dashboard_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AdService.initialize();
 
   final platformService = MethodChannelHotspotPlatformService();
   final aliasService = DeviceAliasService();

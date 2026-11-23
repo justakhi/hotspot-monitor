@@ -13,6 +13,7 @@ import '../services/device_alias_service.dart';
 import '../services/export_service.dart';
 import '../services/history_store.dart';
 import '../services/hotspot_platform_service.dart';
+import '../services/purchase_service.dart';
 import '../services/quota_service.dart';
 import '../services/update_checker_service.dart';
 
@@ -25,10 +26,12 @@ class HotspotRepository {
     UpdateCheckerService? updateService,
     HistoryStore? historyStore,
     ExportService? exportService,
+    PurchaseService? purchaseService,
   })  : quotaService = quotaService ?? QuotaService(),
         updateService = updateService ?? UpdateCheckerService(),
         historyStore = historyStore ?? SqliteHistoryStore(),
-        exportService = exportService ?? const ExportService();
+        exportService = exportService ?? const ExportService(),
+        purchaseService = purchaseService ?? PurchaseService();
 
   final HotspotPlatformService platformService;
   final DeviceAliasService aliasService;
@@ -36,6 +39,7 @@ class HotspotRepository {
   final UpdateCheckerService updateService;
   final HistoryStore historyStore;
   final ExportService exportService;
+  final PurchaseService purchaseService;
 
   Map<String, String> _aliases = const {};
   QuotaConfig _globalQuota = QuotaConfig.defaults;
@@ -58,6 +62,7 @@ class HotspotRepository {
 
   Future<void> initialize() async {
     await historyStore.initialize();
+    await purchaseService.initialize();
     _aliases = await aliasService.loadAliases();
     _globalQuota = await quotaService.loadGlobalQuota();
     _deviceQuotas = await quotaService.loadDeviceQuotas();
@@ -268,6 +273,10 @@ class HotspotRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_onboardingCompletedPrefKey, true);
   }
+
+  bool get isPro => purchaseService.isPro;
+  Future<bool> buyPro() => purchaseService.buyPro();
+  Future<void> restorePurchases() => purchaseService.restorePurchases();
 
   Future<bool> setBackgroundServiceEnabled(bool enabled) =>
       platformService.setBackgroundServiceEnabled(enabled);
@@ -504,6 +513,7 @@ class HotspotRepository {
   void dispose() {
     _nativeSub?.cancel();
     _nativeSub = null;
+    purchaseService.dispose();
     historyStore.close();
     _controller.close();
   }
