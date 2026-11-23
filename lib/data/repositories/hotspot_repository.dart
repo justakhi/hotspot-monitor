@@ -251,6 +251,24 @@ class HotspotRepository {
   Future<bool> requestIgnoreBatteryOptimization() =>
       platformService.requestIgnoreBatteryOptimization();
 
+  Future<bool> isNotificationPermissionGranted() =>
+      platformService.isNotificationPermissionGranted();
+
+  Future<bool> requestNotificationPermission() =>
+      platformService.requestNotificationPermission();
+
+  static const String _onboardingCompletedPrefKey = 'pref_onboarding_completed_v1';
+
+  Future<bool> isOnboardingCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_onboardingCompletedPrefKey) ?? false;
+  }
+
+  Future<void> setOnboardingCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardingCompletedPrefKey, true);
+  }
+
   Future<bool> setBackgroundServiceEnabled(bool enabled) =>
       platformService.setBackgroundServiceEnabled(enabled);
 

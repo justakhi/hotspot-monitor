@@ -1,10 +1,12 @@
 // Copyright (c) 2026 AP Labs - Akshay Kumar (@justakhi). All rights reserved.
 // Licensed under PolyForm Noncommercial License 1.0.0. See LICENSE and NOTICE.
 
-package com.justakhi.hotspot_monitor
+package com.aplabs.hotspotmonitor
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
@@ -13,6 +15,9 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -26,8 +31,8 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : FlutterActivity() {
     companion object {
-        private const val CONTROL_CHANNEL = "com.justakhi.hotspot_monitor/control"
-        private const val TELEMETRY_CHANNEL = "com.justakhi.hotspot_monitor/telemetry"
+        private const val CONTROL_CHANNEL = "com.aplabs.hotspotmonitor/control"
+        private const val TELEMETRY_CHANNEL = "com.aplabs.hotspotmonitor/telemetry"
     }
 
     private lateinit var capabilityChecker: CapabilityChecker
@@ -249,6 +254,29 @@ class MainActivity : FlutterActivity() {
             "requestIgnoreBatteryOptimization" -> {
                 val ok = requestIgnoreBatteryOpt()
                 result.success(ok)
+            }
+            "isNotificationPermissionGranted" -> {
+                val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                } else {
+                    NotificationManagerCompat.from(this).areNotificationsEnabled()
+                }
+                result.success(granted)
+            }
+            "requestNotificationPermission" -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    ActivityCompat.requestPermissions(
+                        this,
+                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                        1010
+                    )
+                    result.success(true)
+                } else {
+                    result.success(true)
+                }
             }
             "setBackgroundServiceEnabled" -> {
                 val enabled = call.argument<Boolean>("enabled") ?: false

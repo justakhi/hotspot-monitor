@@ -1,4 +1,4 @@
-package com.justakhi.hotspot_monitor
+package com.aplabs.hotspotmonitor
 
 import android.app.AppOpsManager
 import android.content.Context

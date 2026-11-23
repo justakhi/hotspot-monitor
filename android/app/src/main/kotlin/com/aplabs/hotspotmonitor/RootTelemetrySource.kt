@@ -1,4 +1,4 @@
-package com.justakhi.hotspot_monitor
+package com.aplabs.hotspotmonitor
 
 import java.io.BufferedReader
 import java.io.File

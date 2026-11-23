@@ -12,7 +12,7 @@ void main() {
   testWidgets(
     'auto-enables root on startup, opens Reports and Menu & Settings pages',
     (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'pref_onboarding_completed_v1': true});
       final fakePlatform = FakeHotspotPlatformService();
       final repo = HotspotRepository(
         platformService: fakePlatform,
@@ -68,7 +68,7 @@ void main() {
   testWidgets(
     'falls back cleanly to non-root mode when root is denied',
     (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'pref_onboarding_completed_v1': true});
       final fakePlatform = FakeHotspotPlatformService()
         ..grantRootOnRequest = false;
       final repo = HotspotRepository(
@@ -88,7 +88,7 @@ void main() {
   testWidgets(
     'tapping a service opens ServiceDetailScreen with plain-English info and endpoints',
     (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'pref_onboarding_completed_v1': true});
       final fakePlatform = FakeHotspotPlatformService();
       final repo = HotspotRepository(
         platformService: fakePlatform,
@@ -183,7 +183,7 @@ void main() {
   testWidgets(
     'home separates live connected vs recently disconnected (1h) and opens Connection History',
     (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'pref_onboarding_completed_v1': true});
       final fakePlatform = FakeHotspotPlatformService();
       final repo = HotspotRepository(
         platformService: fakePlatform,
@@ -283,6 +283,35 @@ void main() {
 
       expect(find.text('Connection History'), findsOneWidget);
       expect(find.text('Old-Phone'), findsOneWidget);
+
+      await fakePlatform.controller.close();
+    },
+  );
+
+  testWidgets(
+    'shows WelcomeOnboardingSheet on first launch and completes setup',
+    (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({}); // No onboarding flag set
+      final fakePlatform = FakeHotspotPlatformService();
+      final repo = HotspotRepository(
+        platformService: fakePlatform,
+        aliasService: DeviceAliasService(),
+        historyStore: InMemoryHistoryStore(),
+      );
+
+      await tester.pumpWidget(HotspotMonitorApp(repository: repo));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Welcome to Hotspot Monitor'), findsOneWidget);
+      expect(find.text('Status Bar Live Speed'), findsOneWidget);
+      expect(find.text('Screen-Off Reliability'), findsOneWidget);
+      expect(find.text('100% Offline & Private'), findsOneWidget);
+
+      await tester.tap(find.text('Get Started'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Welcome to Hotspot Monitor'), findsNothing);
+      expect(find.text('Hotspot Data Quota'), findsOneWidget);
 
       await fakePlatform.controller.close();
     },

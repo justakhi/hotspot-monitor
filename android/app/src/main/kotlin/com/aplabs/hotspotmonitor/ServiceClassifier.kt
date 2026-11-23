@@ -1,4 +1,4 @@
-package com.justakhi.hotspot_monitor
+package com.aplabs.hotspotmonitor
 
 data class ClassifiedService(
     val serviceId: String,

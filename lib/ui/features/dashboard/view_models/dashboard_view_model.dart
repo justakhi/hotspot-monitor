@@ -32,6 +32,8 @@ class DashboardViewModel extends ChangeNotifier {
   AppReleaseInfo? _availableUpdate;
   bool _isBackgroundServiceEnabled = false;
   bool _isBatteryOptimizationIgnored = false;
+  bool _isNotificationPermissionGranted = true;
+  bool _shouldShowOnboarding = false;
 
   HotspotSnapshot get snapshot => _snapshot;
   List<DeviceHistorySummary> get knownDeviceHistory => _knownDeviceHistory;
@@ -41,6 +43,8 @@ class DashboardViewModel extends ChangeNotifier {
   AppReleaseInfo? get availableUpdate => _availableUpdate;
   bool get isBackgroundServiceEnabled => _isBackgroundServiceEnabled;
   bool get isBatteryOptimizationIgnored => _isBatteryOptimizationIgnored;
+  bool get isNotificationPermissionGranted => _isNotificationPermissionGranted;
+  bool get shouldShowOnboarding => _shouldShowOnboarding;
 
   QuotaConfig get globalQuota => repository.globalQuota;
   Map<String, DeviceQuota> get deviceQuotas => repository.deviceQuotas;
@@ -94,6 +98,10 @@ class DashboardViewModel extends ChangeNotifier {
       }
       _isBatteryOptimizationIgnored =
           await repository.isBatteryOptimizationIgnored();
+      _isNotificationPermissionGranted =
+          await repository.isNotificationPermissionGranted();
+      final hasCompleted = await repository.isOnboardingCompleted();
+      _shouldShowOnboarding = !hasCompleted;
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -254,6 +262,19 @@ class DashboardViewModel extends ChangeNotifier {
     await repository.requestIgnoreBatteryOptimization();
     _isBatteryOptimizationIgnored =
         await repository.isBatteryOptimizationIgnored();
+    notifyListeners();
+  }
+
+  Future<void> requestNotificationPermission() async {
+    await repository.requestNotificationPermission();
+    _isNotificationPermissionGranted =
+        await repository.isNotificationPermissionGranted();
+    notifyListeners();
+  }
+
+  Future<void> completeOnboarding() async {
+    _shouldShowOnboarding = false;
+    await repository.setOnboardingCompleted();
     notifyListeners();
   }
 

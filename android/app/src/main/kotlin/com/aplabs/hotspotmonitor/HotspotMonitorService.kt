@@ -1,4 +1,4 @@
-package com.justakhi.hotspot_monitor
+package com.aplabs.hotspotmonitor
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -20,9 +20,9 @@ class HotspotMonitorService : Service() {
         const val CHANNEL_ID = "hotspot_monitor_live_channel"
         const val NOTIFICATION_ID = 40401
 
-        const val ACTION_START = "com.justakhi.hotspot_monitor.START"
-        const val ACTION_STOP = "com.justakhi.hotspot_monitor.STOP"
-        const val ACTION_UPDATE = "com.justakhi.hotspot_monitor.UPDATE"
+        const val ACTION_START = "com.aplabs.hotspotmonitor.START"
+        const val ACTION_STOP = "com.aplabs.hotspotmonitor.STOP"
+        const val ACTION_UPDATE = "com.aplabs.hotspotmonitor.UPDATE"
 
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_TEXT = "extra_text"

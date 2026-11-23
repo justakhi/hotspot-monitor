@@ -96,6 +96,12 @@ class FakeHotspotPlatformService implements HotspotPlatformService {
   Future<bool> requestIgnoreBatteryOptimization() async => true;
 
   @override
+  Future<bool> isNotificationPermissionGranted() async => true;
+
+  @override
+  Future<bool> requestNotificationPermission() async => true;
+
+  @override
   Future<bool> setBackgroundServiceEnabled(bool enabled) async => true;
 
   @override

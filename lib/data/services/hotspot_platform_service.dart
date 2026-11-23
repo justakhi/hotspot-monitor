@@ -22,6 +22,8 @@ abstract class HotspotPlatformService {
   Future<bool> toggleHotspot();
   Future<bool> isBatteryOptimizationIgnored();
   Future<bool> requestIgnoreBatteryOptimization();
+  Future<bool> isNotificationPermissionGranted() async => true;
+  Future<bool> requestNotificationPermission() async => true;
   Future<bool> setBackgroundServiceEnabled(bool enabled);
   Future<bool> isBackgroundServiceEnabled();
   Future<bool> shareExport({
@@ -35,10 +37,10 @@ abstract class HotspotPlatformService {
 /// Platform channel implementation backed by `MainActivity.kt`.
 class MethodChannelHotspotPlatformService implements HotspotPlatformService {
   static const MethodChannel _control = MethodChannel(
-    'com.justakhi.hotspot_monitor/control',
+    'com.aplabs.hotspotmonitor/control',
   );
   static const EventChannel _telemetry = EventChannel(
-    'com.justakhi.hotspot_monitor/telemetry',
+    'com.aplabs.hotspotmonitor/telemetry',
   );
 
   Stream<Map<Object?, Object?>>? _cachedStream;
@@ -142,6 +144,18 @@ class MethodChannelHotspotPlatformService implements HotspotPlatformService {
     final res = await _control.invokeMethod<bool>(
       'requestIgnoreBatteryOptimization',
     );
+    return res ?? false;
+  }
+
+  @override
+  Future<bool> isNotificationPermissionGranted() async {
+    final granted = await _control.invokeMethod<bool>('isNotificationPermissionGranted');
+    return granted ?? false;
+  }
+
+  @override
+  Future<bool> requestNotificationPermission() async {
+    final res = await _control.invokeMethod<bool>('requestNotificationPermission');
     return res ?? false;
   }
 

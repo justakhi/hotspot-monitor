@@ -18,6 +18,7 @@ import '../../reports/views/reports_screen.dart';
 import '../../service_detail/views/service_detail_screen.dart';
 import '../../settings/views/settings_screen.dart';
 import '../view_models/dashboard_view_model.dart';
+import '../widgets/welcome_onboarding_sheet.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key, required this.viewModel});
@@ -30,22 +31,37 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _updateDialogShown = false;
+  bool _onboardingShown = false;
 
   @override
   void initState() {
     super.initState();
-    widget.viewModel.addListener(_checkUpdatePopup);
+    widget.viewModel.addListener(_checkPopups);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPopups());
   }
 
   @override
   void dispose() {
-    widget.viewModel.removeListener(_checkUpdatePopup);
+    widget.viewModel.removeListener(_checkPopups);
     super.dispose();
   }
 
-  void _checkUpdatePopup() {
+  void _checkPopups() {
+    if (!mounted) return;
+    if (widget.viewModel.shouldShowOnboarding && !_onboardingShown) {
+      _onboardingShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        WelcomeOnboardingSheet.show(
+          context,
+          viewModel: widget.viewModel,
+        );
+      });
+      return;
+    }
+
     final update = widget.viewModel.availableUpdate;
-    if (update != null && update.isNewer && !_updateDialogShown && mounted) {
+    if (update != null && update.isNewer && !_updateDialogShown) {
       _updateDialogShown = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -117,6 +133,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     if (!caps.usageAccessGranted && !snapshot.isRootMode) ...[
                       _UsagePromptBanner(
                         onOpenSettings: viewModel.openUsageAccessSettings,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (!viewModel.isBatteryOptimizationIgnored && !viewModel.isInitializing) ...[
+                      FTappable(
+                        onPress: viewModel.requestIgnoreBatteryOptimization,
+                        child: const FAlert(
+                          icon: Icon(FLucideIcons.zap),
+                          title: Text('Optimize Background Reliability'),
+                          subtitle: Text(
+                            'Exempt Hotspot Monitor from battery killing so tracking stays active when your screen is locked.',
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 12),
                     ],
