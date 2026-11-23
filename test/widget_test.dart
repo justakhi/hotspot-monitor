@@ -53,13 +53,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Clear Saved History'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.text('AP Labs · Akshay Kumar'),
+        find.text('AP Labs'),
         300,
         scrollable: find.byType(Scrollable).last,
       );
       await tester.pumpAndSettle();
-      expect(find.text('AP Labs · Akshay Kumar'), findsOneWidget);
-      expect(find.text('github.com/justakhi/hotspot-monitor'), findsOneWidget);
+      expect(find.text('AP Labs'), findsOneWidget);
       expect(find.text('contact@techyke.in'), findsOneWidget);
 
       await fakePlatform.controller.close();

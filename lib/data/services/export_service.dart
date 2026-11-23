@@ -11,8 +11,6 @@ class ExportService {
   const ExportService();
 
   static const String appName = 'Hotspot Monitor';
-  static const String appAuthor = 'Akshay Kumar (@justakhi)';
-  static const String githubUrl = 'https://github.com/justakhi/hotspot-monitor';
 
   /// Exports a full usage report as CSV with metadata, device tables, and service breakdowns.
   String exportReportCsv(
@@ -27,8 +25,6 @@ class ExportService {
     // 1. Report Metadata
     buffer.writeln('# Hotspot Monitor - Traffic & Usage Report');
     buffer.writeln('# Application: $appName');
-    buffer.writeln('# GitHub: $githubUrl');
-    buffer.writeln('# Created By: $appAuthor');
     buffer.writeln('# Export Time: $generatedAt (epoch: $nowMs)');
     buffer.writeln('# Period: ${report.range.title} (${report.range.shortLabel})');
     buffer.writeln('# Upstream Network: ${_csvCell(capabilities.upstreamDetails)}');
@@ -119,8 +115,6 @@ class ExportService {
     final payload = {
       'metadata': {
         'appName': appName,
-        'appAuthor': appAuthor,
-        'githubUrl': githubUrl,
         'generatedAtMs': nowMs,
         'generatedAt': DateTime.fromMillisecondsSinceEpoch(nowMs).toIso8601String(),
         'range': report.range.shortLabel,
@@ -197,8 +191,6 @@ class ExportService {
 
     buffer.writeln('# Hotspot Monitor - Device Connection History & Logs');
     buffer.writeln('# Application: $appName');
-    buffer.writeln('# GitHub: $githubUrl');
-    buffer.writeln('# Created By: $appAuthor');
     buffer.writeln('# Export Time: $generatedAt (epoch: $nowMs)');
     buffer.writeln('# Upstream Network: ${_csvCell(capabilities.upstreamDetails)}');
     buffer.writeln('# Hotspot Interface: ${_csvCell(capabilities.hotspotInterface ?? "unknown")}');
@@ -245,8 +237,6 @@ class ExportService {
 
     buffer.writeln('# Hotspot Monitor - Single Device Usage Log');
     buffer.writeln('# Application: $appName');
-    buffer.writeln('# GitHub: $githubUrl');
-    buffer.writeln('# Created By: $appAuthor');
     buffer.writeln('# Export Time: $generatedAt (epoch: $nowMs)');
     buffer.writeln('# Device: ${_csvCell(device.displayName)} (${device.ip})');
     buffer.writeln('# MAC: ${_csvCell(device.mac ?? "N/A")} · Vendor: ${_csvCell(device.vendor)}');

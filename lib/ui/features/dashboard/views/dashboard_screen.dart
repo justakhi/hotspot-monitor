@@ -52,7 +52,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         UpdateAvailableDialog.show(
           context,
           release: update,
-          onDownload: () => widget.viewModel.openUrl(update.downloadUrl),
+          onDownload: () => widget.viewModel.openUrl(
+            update.releasePageUrl.isNotEmpty
+                ? update.releasePageUrl
+                : update.downloadUrl,
+          ),
           onDismiss: () => widget.viewModel.dismissUpdate(),
         );
       });
@@ -131,9 +135,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onPress: () => UpdateAvailableDialog.show(
                           context,
                           release: viewModel.availableUpdate!,
-                          onDownload: () => viewModel.openUrl(
-                            viewModel.availableUpdate!.downloadUrl,
-                          ),
+                          onDownload: () {
+                            final update = viewModel.availableUpdate!;
+                            viewModel.openUrl(
+                              update.releasePageUrl.isNotEmpty
+                                  ? update.releasePageUrl
+                                  : update.downloadUrl,
+                            );
+                          },
                           onDismiss: () => viewModel.dismissUpdate(),
                         ),
                         child: FAlert(

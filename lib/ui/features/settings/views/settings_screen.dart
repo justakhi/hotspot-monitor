@@ -297,7 +297,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              _SectionTitle(title: 'About & Credits'),
+              _SectionTitle(title: 'About'),
               const SizedBox(height: 8),
               FTileGroup(
                 children: [
@@ -312,7 +312,7 @@ class SettingsScreen extends StatelessWidget {
                       showFToast(
                         context: context,
                         icon: const Icon(FLucideIcons.loader),
-                        title: const Text('Checking GitHub Releases...'),
+                        title: const Text('Checking for updates...'),
                       );
                       final update = await viewModel.checkForUpdate();
                       if (!context.mounted) return;
@@ -320,8 +320,11 @@ class SettingsScreen extends StatelessWidget {
                         UpdateAvailableDialog.show(
                           context,
                           release: update,
-                          onDownload: () =>
-                              viewModel.openUrl(update.downloadUrl),
+                          onDownload: () => viewModel.openUrl(
+                            update.releasePageUrl.isNotEmpty
+                                ? update.releasePageUrl
+                                : update.downloadUrl,
+                          ),
                           onDismiss: () => viewModel.dismissUpdate(),
                         );
                       } else {
@@ -338,19 +341,10 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   FTile(
                     prefix: const Icon(FLucideIcons.building2),
-                    title: const Text('AP Labs · Akshay Kumar'),
-                    subtitle: const Text('techyke.in · @justakhi'),
+                    title: const Text('AP Labs'),
+                    subtitle: const Text('techyke.in'),
                     suffix: const Icon(FLucideIcons.externalLink),
                     onPress: () => viewModel.openUrl('https://techyke.in'),
-                  ),
-                  FTile(
-                    prefix: const Icon(FLucideIcons.code),
-                    title: const Text('Source Code & Releases'),
-                    subtitle: const Text('github.com/justakhi/hotspot-monitor'),
-                    suffix: const Icon(FLucideIcons.externalLink),
-                    onPress: () => viewModel.openUrl(
-                      'https://github.com/justakhi/hotspot-monitor',
-                    ),
                   ),
                   FTile(
                     prefix: const Icon(FLucideIcons.send),
@@ -383,18 +377,16 @@ class SettingsScreen extends StatelessWidget {
                     prefix: const Icon(FLucideIcons.scale),
                     title: Text('Hotspot Monitor v${UpdateCheckerService.currentVersion}'),
                     subtitle: const Text(
-                      'PolyForm Noncommercial 1.0.0 · Free for personal use',
+                      'Free for personal and network management use',
                     ),
-                    onPress: () => viewModel.openUrl(
-                      'https://github.com/justakhi/hotspot-monitor/blob/main/LICENSE',
-                    ),
+                    onPress: () => viewModel.openUrl('https://techyke.in'),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
               AppCard(
                 child: Text(
-                  'Copyright (c) 2026 AP Labs (Akshay Kumar). Provided for educational use and managing networks you own; AP Labs is not responsible for misuse.',
+                  'Copyright (c) 2026 AP Labs. Provided for educational use and managing networks you own; AP Labs is not responsible for misuse.',
                   style: theme.typography.body.xs2.copyWith(
                     color: theme.colors.mutedForeground,
                     height: 1.4,

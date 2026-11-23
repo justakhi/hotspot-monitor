@@ -130,9 +130,9 @@ class UpdateAvailableDialog extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Icon(FLucideIcons.download, size: 14),
+                      Icon(FLucideIcons.externalLink, size: 14),
                       SizedBox(width: 6),
-                      Text('Download Update'),
+                      Text('View Update'),
                     ],
                   ),
                 ),
